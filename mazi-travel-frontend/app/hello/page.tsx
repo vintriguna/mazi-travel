@@ -168,10 +168,31 @@ export default function HelloPage() {
 
   /* ================= SUBMIT ================= */
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
-  }
+
+    try {
+        const res = await fetch("/api/trips", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(trip),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+        throw new Error(data.error || "Failed to save trip");
+        }
+
+        console.log("Trip saved:", data.tripId);
+        setSubmitted(true);
+    } catch (err) {
+        console.error(err);
+        alert("Failed to save trip");
+    }
+    }
 
   /* ================= UI ================= */
 
