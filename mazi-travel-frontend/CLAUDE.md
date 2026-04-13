@@ -2,6 +2,120 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project overview
+
+This repository contains a hackathon MVP for an AI-powered group travel planning web app.
+
+Primary goal:
+Reduce group decision-making friction when planning trips.
+
+Primary users:
+Small groups of students, friends, or colleagues planning a shared trip.
+
+Core MVP flow:
+
+1. Host creates a trip
+2. Host adds initial structured trip details
+3. Participants join via invite
+4. Participants submit preferences
+5. AI generates 2–3 trip plan options
+6. Participants vote
+7. App generates a final itinerary for the winning option
+
+## Product boundaries
+
+Optimize for:
+
+- fast consensus
+- clear group preference collection
+- demoable end-to-end flow
+
+Do not overbuild:
+
+- no booking integrations unless explicitly requested
+- no live pricing system unless explicitly requested
+- no enterprise-grade architecture unless explicitly requested
+- no native mobile app in MVP
+
+## Tech stack
+
+- Next.js
+- Supabase
+  - Postgres
+  - Auth
+  - Storage if needed
+- n8n may be added later for automation
+
+## Current implementation priorities
+
+Focus on these first:
+
+1. Trip creation
+2. Trip invitation and participant joining
+3. Preference collection
+4. AI generation of trip options
+5. Voting flow
+6. Final itinerary generation
+
+When suggesting work, prefer the smallest complete vertical slice.
+
+## Repository expectations
+
+Before making changes:
+
+- inspect existing routes, components, and database usage
+- summarize relevant files before large edits
+- explain schema changes before implementing them
+- prefer extending existing patterns over introducing new abstractions
+
+## Database guidance
+
+This app is centered around collaborative trip planning.
+Likely core entities include:
+
+- trips
+- trip_participants
+- participant_preferences
+- trip_options
+- votes
+- itinerary
+
+When proposing schema changes:
+
+- show affected tables and relationships
+- keep the schema simple
+- prefer normalized structure over ad hoc JSON unless JSON clearly simplifies the MVP
+
+## Coding guidance
+
+- Keep implementations simple and maintainable
+- Avoid unnecessary abstraction
+- Prefer readable code over clever code
+- Flag assumptions clearly
+- Do not introduce major dependencies unless they solve a real MVP need
+- Keep AI-related code modular so prompts and generation logic can be changed later
+
+## UX guidance
+
+- Prefer structured inputs where possible
+- Use free text only where it adds clear value
+- The app should feel collaborative, not single-user
+- The product should make choices easier, not just generate lots of content
+
+## Output expectations
+
+When asked to implement a feature:
+
+1. briefly summarize the existing relevant code
+2. propose the smallest implementation plan
+3. implement only what is needed
+4. note any follow-up work separately
+
+When uncertain:
+
+- do not invent hidden requirements
+- state the assumption and proceed with the most reasonable MVP-friendly option
+
 ## Important: Next.js Version Warning
 
 This project uses **Next.js 16**, which has breaking changes vs. earlier versions. Before writing any Next.js-specific code, read the relevant guide from `node_modules/next/dist/docs/`. Heed all deprecation notices. APIs, conventions, and file structure may differ from training data.
