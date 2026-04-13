@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ type TripPreview = {
 
 type Status = "enter_code" | "loading" | "ready" | "not_found" | "joining" | "error";
 
-export default function JoinTripPage() {
+function JoinTripInner() {
   const searchParams = useSearchParams();
   const urlCode = searchParams.get("code") ?? "";
   const router = useRouter();
@@ -68,90 +68,106 @@ export default function JoinTripPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-md">
-        {/* Code entry form — shown when no URL code */}
-        {status === "enter_code" && (
-          <>
-            <CardHeader>
-              <CardTitle>Join a trip</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCodeSubmit} className="grid gap-4">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="code">Invite code</Label>
-                  <Input
-                    id="code"
-                    placeholder="e.g. a1b2c3d4"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    autoComplete="off"
-                    autoFocus
-                  />
-                </div>
-                <Button type="submit" disabled={!code.trim()} className="w-full">
-                  Look up trip
-                </Button>
-              </form>
-            </CardContent>
-          </>
-        )}
-
-        {/* Loading */}
-        {status === "loading" && (
-          <CardContent className="py-10 text-center text-muted-foreground">
-            Looking up invite…
-          </CardContent>
-        )}
-
-        {/* Not found — with option to try again */}
-        {status === "not_found" && (
-          <>
-            <CardHeader>
-              <CardTitle>Code not found</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <p className="text-sm text-muted-foreground">
-                That invite code is invalid. Double-check the code and try again.
-              </p>
-              <Button variant="outline" onClick={() => { setCode(""); setStatus("enter_code"); }}>
-                Try a different code
-              </Button>
-              <Button variant="ghost" onClick={() => router.push("/trips")}>
-                Back to my trips
-              </Button>
-            </CardContent>
-          </>
-        )}
-
-        {/* Confirmation */}
-        {(status === "ready" || status === "joining" || status === "error") && trip && (
-          <>
-            <CardHeader>
-              <CardTitle>You&apos;re invited</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-              <div className="rounded-xl border bg-muted/50 px-4 py-4">
-                <p className="font-semibold">{trip.name}</p>
-                {trip.destination && (
-                  <p className="mt-0.5 text-sm text-muted-foreground">{trip.destination}</p>
-                )}
+    <Card className="w-full max-w-md">
+      {/* Code entry form — shown when no URL code */}
+      {status === "enter_code" && (
+        <>
+          <CardHeader>
+            <CardTitle>Join a trip</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCodeSubmit} className="grid gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="code">Invite code</Label>
+                <Input
+                  id="code"
+                  placeholder="e.g. a1b2c3d4"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  autoComplete="off"
+                  autoFocus
+                />
               </div>
+              <Button type="submit" disabled={!code.trim()} className="w-full">
+                Look up trip
+              </Button>
+            </form>
+          </CardContent>
+        </>
+      )}
 
-              {status === "error" && (
-                <p className="text-sm text-destructive">{errorMsg}</p>
+      {/* Loading */}
+      {status === "loading" && (
+        <CardContent className="py-10 text-center text-muted-foreground">
+          Looking up invite…
+        </CardContent>
+      )}
+
+      {/* Not found — with option to try again */}
+      {status === "not_found" && (
+        <>
+          <CardHeader>
+            <CardTitle>Code not found</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <p className="text-sm text-muted-foreground">
+              That invite code is invalid. Double-check the code and try again.
+            </p>
+            <Button variant="outline" onClick={() => { setCode(""); setStatus("enter_code"); }}>
+              Try a different code
+            </Button>
+            <Button variant="ghost" onClick={() => router.push("/trips")}>
+              Back to my trips
+            </Button>
+          </CardContent>
+        </>
+      )}
+
+      {/* Confirmation */}
+      {(status === "ready" || status === "joining" || status === "error") && trip && (
+        <>
+          <CardHeader>
+            <CardTitle>You&apos;re invited</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            <div className="rounded-xl border bg-muted/50 px-4 py-4">
+              <p className="font-semibold">{trip.name}</p>
+              {trip.destination && (
+                <p className="mt-0.5 text-sm text-muted-foreground">{trip.destination}</p>
               )}
+            </div>
 
-              <Button onClick={handleJoin} disabled={status === "joining"} className="w-full">
-                {status === "joining" ? "Joining…" : "Join trip"}
-              </Button>
-              <Button variant="ghost" onClick={() => { setCode(""); setTrip(null); setStatus("enter_code"); }}>
-                Use a different code
-              </Button>
+            {status === "error" && (
+              <p className="text-sm text-destructive">{errorMsg}</p>
+            )}
+
+            <Button onClick={handleJoin} disabled={status === "joining"} className="w-full">
+              {status === "joining" ? "Joining…" : "Join trip"}
+            </Button>
+            <Button variant="ghost" onClick={() => { setCode(""); setTrip(null); setStatus("enter_code"); }}>
+              Use a different code
+            </Button>
+          </CardContent>
+        </>
+      )}
+    </Card>
+  );
+}
+
+export default function JoinTripPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+      <Suspense
+        fallback={
+          <Card className="w-full max-w-md">
+            <CardContent className="py-10 text-center text-muted-foreground">
+              Loading…
             </CardContent>
-          </>
-        )}
-      </Card>
+          </Card>
+        }
+      >
+        <JoinTripInner />
+      </Suspense>
     </div>
   );
 }

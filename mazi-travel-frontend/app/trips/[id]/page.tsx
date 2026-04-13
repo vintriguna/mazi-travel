@@ -5,19 +5,18 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import CopyInviteLink from "./CopyInviteLink";
+import TripSummary from "./TripSummary";
 
-const BUDGET_LABELS: Record<string, string> = {
-  under_500: "Under $500",
-  "500_1500": "$500 – $1,500",
-  "1500_3000": "$1,500 – $3,000",
-  "3000_plus": "$3,000+",
+const TRIP_TYPE_LABELS: Record<string, string> = {
+  vacation: "Vacation",
+  event_celebration: "Event / celebration",
+  work_conference: "Work / conference",
 };
 
-const PURPOSE_LABELS: Record<string, string> = {
-  leisure: "Leisure",
-  adventure: "Adventure",
-  business: "Business",
-  other: "Other",
+const PACE_LABELS: Record<string, string> = {
+  relaxed: "Relaxed",
+  balanced: "Balanced",
+  packed: "Packed",
 };
 
 export default async function TripDetailPage({
@@ -89,9 +88,12 @@ export default async function TripDetailPage({
           {isOwner && <Badge variant="secondary">Owner</Badge>}
         </div>
 
+        {/* AI summary */}
+        <TripSummary tripId={id} existingSummary={trip.ai_summary ?? null} />
+
         {/* Trip details */}
         <div className="grid gap-3">
-          <Row label="Destination" value={trip.destination} />
+          <Row label="Destination" value={trip.destination ?? "—"} />
           <Row
             label="Dates"
             value={
@@ -101,21 +103,26 @@ export default async function TripDetailPage({
             }
           />
           <Row
-            label="Budget"
-            value={
-              trip.budget_range
-                ? (BUDGET_LABELS[trip.budget_range] ?? trip.budget_range)
-                : "—"
-            }
+            label="Trip type"
+            value={trip.trip_type ? (TRIP_TYPE_LABELS[trip.trip_type] ?? trip.trip_type) : "—"}
           />
           <Row
-            label="Purpose"
-            value={
-              trip.trip_purpose
-                ? (PURPOSE_LABELS[trip.trip_purpose] ?? trip.trip_purpose)
-                : "—"
-            }
+            label="Group size"
+            value={trip.group_size ? `${trip.group_size} people` : "—"}
           />
+          <Row
+            label="Total budget"
+            value={trip.total_budget ? `$${trip.total_budget.toLocaleString()}` : "—"}
+          />
+          <Row
+            label="Pace"
+            value={trip.trip_pace ? (PACE_LABELS[trip.trip_pace] ?? trip.trip_pace) : "—"}
+          />
+          <Row
+            label="Priorities"
+            value={trip.top_priorities?.length ? trip.top_priorities.join(", ") : "—"}
+          />
+          {trip.ai_notes && <Row label="Notes" value={trip.ai_notes} />}
         </div>
 
         {/* Participants */}
