@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/server";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import CopyInviteLink from "./CopyInviteLink";
 
 const BUDGET_LABELS: Record<string, string> = {
   under_500: "Under $500",
@@ -23,7 +27,6 @@ export default async function TripDetailPage({
 }) {
   const { id } = await params;
 
-  // Fetch trip via service-role client (bypasses RLS)
   const { data: trip, error } = await supabase
     .from("trips")
     .select("*")
@@ -33,38 +36,61 @@ export default async function TripDetailPage({
   if (error || !trip) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-red-500">Trip not found.</p>
+        <p className="text-destructive">Trip not found.</p>
       </div>
     );
   }
 
-  // Check ownership
+  // Current user
   const sessionClient = await createClient();
   const { data: claimsData } = await sessionClient.auth.getClaims();
-  const isOwner = claimsData?.claims?.sub === trip.user_id;
+  const currentUserId = claimsData?.claims?.sub;
+  const isOwner = currentUserId === trip.user_id;
+
+  // Participants
+  const { data: participants } = await supabase
+    .from("trip_participants")
+    .select("user_id, role, joined_at")
+    .eq("trip_id", id)
+    .order("joined_at", { ascending: true });
+
+  // Fetch emails for participants via admin API
+  type ParticipantRow = { user_id: string; role: string; joined_at: string };
+  type ParticipantDisplay = ParticipantRow & { email: string };
+
+  let participantList: ParticipantDisplay[] = [];
+  if (participants && participants.length > 0) {
+    const { data: usersData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    const userMap = new Map(usersData?.users.map((u) => [u.id, u.email ?? u.id]));
+    participantList = participants.map((p) => ({
+      ...p,
+      email: userMap.get(p.user_id) ?? p.user_id,
+    }));
+  }
+
+  // Build invite link
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "localhost:3000";
+  const protocol = host.startsWith("localhost") ? "http" : "https";
+  const inviteLink = `${protocol}://${host}/trips/join?code=${trip.invite_code}`;
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
+    <div className="min-h-screen bg-muted/40 px-4 py-10">
       <div className="mx-auto max-w-lg">
         <Link
           href="/trips"
-          className="mb-8 inline-block text-sm text-zinc-500 hover:text-black dark:hover:text-white"
+          className="mb-6 inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← All trips
         </Link>
 
-        <div className="mb-2 flex items-center gap-3">
-          <h1 className="text-3xl font-semibold text-black dark:text-white">
-            {trip.name}
-          </h1>
-          {isOwner && (
-            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-              Owner
-            </span>
-          )}
+        <div className="mb-6 flex items-center gap-3">
+          <h1 className="text-3xl font-semibold">{trip.name}</h1>
+          {isOwner && <Badge variant="secondary">Owner</Badge>}
         </div>
 
-        <div className="mt-6 grid gap-4">
+        {/* Trip details */}
+        <div className="grid gap-3">
           <Row label="Destination" value={trip.destination} />
           <Row
             label="Dates"
@@ -91,6 +117,40 @@ export default async function TripDetailPage({
             }
           />
         </div>
+
+        {/* Participants */}
+        <div className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Participants
+          </h2>
+          <div className="grid gap-2">
+            {participantList.map((p) => (
+              <Card key={p.user_id}>
+                <CardContent className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm">
+                    {p.email}
+                    {p.user_id === currentUserId && (
+                      <span className="ml-1.5 text-muted-foreground">(you)</span>
+                    )}
+                  </span>
+                  <Badge variant={p.role === "owner" ? "default" : "secondary"}>
+                    {p.role}
+                  </Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Invite link — owners only */}
+        {isOwner && (
+          <div className="mt-8">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Invite link
+            </h2>
+            <CopyInviteLink code={trip.invite_code} link={inviteLink} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -98,11 +158,13 @@ export default async function TripDetailPage({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-        {label}
-      </div>
-      <div className="mt-1 text-sm text-black dark:text-white">{value}</div>
-    </div>
+    <Card>
+      <CardContent className="px-5 py-4">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </div>
+        <div className="mt-1 text-sm">{value}</div>
+      </CardContent>
+    </Card>
   );
 }

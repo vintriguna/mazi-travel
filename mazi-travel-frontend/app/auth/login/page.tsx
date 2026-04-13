@@ -3,6 +3,12 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 type Mode = "signin" | "signup";
 
@@ -17,6 +23,12 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const confirmationError = searchParams.get("error");
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setMessage(null);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -46,105 +58,99 @@ export default function LoginPage() {
         setError(error.message);
         setLoading(false);
       } else {
-        setMessage("Check your email to confirm your account, then sign in.");
-        setLoading(false);
+        router.push("/trips");
       }
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-black">
-      <main className="w-full max-w-md rounded-3xl bg-white p-10 shadow-xl dark:bg-zinc-950">
-        {/* Mode toggle */}
-        <div className="mb-8 flex rounded-2xl border border-zinc-200 p-1 dark:border-zinc-800">
-          <button
-            type="button"
-            onClick={() => { setMode("signin"); setError(null); setMessage(null); }}
-            className={`flex-1 rounded-xl py-2 text-sm font-medium transition ${
-              mode === "signin"
-                ? "bg-black text-white dark:bg-white dark:text-black"
-                : "text-zinc-500 hover:text-black dark:hover:text-white"
-            }`}
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
-            className={`flex-1 rounded-xl py-2 text-sm font-medium transition ${
-              mode === "signup"
-                ? "bg-black text-white dark:bg-white dark:text-black"
-                : "text-zinc-500 hover:text-black dark:hover:text-white"
-            }`}
-          >
-            Sign up
-          </button>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="pb-2">
+          {/* Mode toggle */}
+          <div className="flex rounded-lg border bg-muted p-1 gap-1">
+            <Button
+              type="button"
+              variant={mode === "signin" ? "default" : "ghost"}
+              size="sm"
+              className="flex-1"
+              onClick={() => switchMode("signin")}
+            >
+              Sign in
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "signup" ? "default" : "ghost"}
+              size="sm"
+              className="flex-1"
+              onClick={() => switchMode("signup")}
+            >
+              Sign up
+            </Button>
+          </div>
+          <CardTitle className="pt-4 text-xl">
+            {mode === "signin" ? "Welcome back" : "Create an account"}
+          </CardTitle>
+        </CardHeader>
 
-        <h1 className="mb-6 text-2xl font-semibold text-black dark:text-white">
-          {mode === "signin" ? "Welcome back" : "Create an account"}
-        </h1>
+        <CardContent className="grid gap-4">
+          {confirmationError === "confirmation_failed" && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                Email confirmation failed. Please try again.
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {confirmationError === "confirmation_failed" && (
-          <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-            Email confirmation failed. Please try again.
-          </p>
-        )}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        {error && (
-          <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </p>
-        )}
+          {message && (
+            <Alert>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
 
-        {message && (
-          <p className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">
-            {message}
-          </p>
-        )}
+          <Separator />
 
-        <form onSubmit={handleSubmit} className="grid gap-4">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Email
-            </span>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-black outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Password
-            </span>
-            <input
-              type="password"
-              required
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-black outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-            />
-          </label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 w-full rounded-2xl bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-black"
-          >
-            {loading
-              ? mode === "signin" ? "Signing in…" : "Creating account…"
-              : mode === "signin" ? "Sign in" : "Sign up"}
-          </button>
-        </form>
-      </main>
+            <Button type="submit" disabled={loading} className="w-full mt-2">
+              {loading
+                ? mode === "signin" ? "Signing in…" : "Creating account…"
+                : mode === "signin" ? "Sign in" : "Sign up"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
