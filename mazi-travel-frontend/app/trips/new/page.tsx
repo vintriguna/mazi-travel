@@ -5,50 +5,84 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-type TripForm = {
-  name: string;
-  destination: string;
-  startDate: string;
-  endDate: string;
-  budgetRange: string;
-  tripPurpose: string;
-};
+const TRIP_TYPES = [
+  { value: "vacation", label: "Vacation" },
+  { value: "event_celebration", label: "Event / celebration" },
+  { value: "work_conference", label: "Work / conference" },
+];
 
-const empty: TripForm = {
-  name: "",
-  destination: "",
-  startDate: "",
-  endDate: "",
-  budgetRange: "",
-  tripPurpose: "",
-};
+const PACE_OPTIONS = [
+  { value: "relaxed", label: "Relaxed" },
+  { value: "balanced", label: "Balanced" },
+  { value: "packed", label: "Packed" },
+];
+
+const PRIORITY_OPTIONS = [
+  "Food & dining",
+  "Nightlife",
+  "Outdoor activities",
+  "Beach / water",
+  "Museums & culture",
+  "Shopping",
+  "Adventure sports",
+  "Relaxation & wellness",
+  "Local experiences",
+];
 
 export default function NewTripPage() {
-  const [form, setForm] = useState<TripForm>(empty);
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  function set(field: keyof TripForm, value: string) {
-    setForm((f) => ({ ...f, [field]: value }));
+  const [name, setName] = useState("");
+  const [destination, setDestination] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [tripType, setTripType] = useState("");
+  const [groupSize, setGroupSize] = useState("");
+  const [totalBudget, setTotalBudget] = useState("");
+  const [tripPace, setTripPace] = useState("");
+  const [priorities, setPriorities] = useState<string[]>([]);
+  const [aiNotes, setAiNotes] = useState("");
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  function togglePriority(option: string) {
+    setPriorities((prev) =>
+      prev.includes(option) ? prev.filter((p) => p !== option) : [...prev, option]
+    );
+  }
+
+  function validateDates(): boolean {
+    if (startDate && endDate && endDate < startDate) {
+      setDateError("End date must be on or after start date.");
+      return false;
+    }
+    setDateError(null);
+    return true;
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!validateDates()) return;
     setLoading(true);
     try {
       const res = await fetch("/api/trips", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name,
+          destination,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          tripType: tripType || null,
+          groupSize: groupSize ? Number(groupSize) : null,
+          totalBudget: totalBudget ? Number(totalBudget) : null,
+          tripPace: tripPace || null,
+          topPriorities: priorities.length ? priorities : null,
+          aiNotes: aiNotes || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save trip");
@@ -67,87 +101,175 @@ export default function NewTripPage() {
           <CardTitle className="text-2xl">Create a trip</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="grid gap-5">
+          <form onSubmit={handleSubmit} className="grid gap-6">
+
+            {/* Trip name */}
             <div className="grid gap-1.5">
               <Label htmlFor="name">Trip name</Label>
               <Input
                 id="name"
                 required
                 placeholder="e.g. Tokyo Spring 2025"
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
               />
             </div>
 
+            {/* Destination */}
             <div className="grid gap-1.5">
-              <Label htmlFor="destination">Destination / region</Label>
+              <Label htmlFor="destination">Destination city</Label>
               <Input
                 id="destination"
                 required
-                placeholder="e.g. Japan, Southeast Asia"
-                value={form.destination}
-                onChange={(e) => set("destination", e.target.value)}
+                placeholder="e.g. Tokyo, Paris, Bali"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="startDate">Start date</Label>
+            {/* Dates */}
+            <div className="grid gap-1.5">
+              <Label>Dates</Label>
+              <div className="grid grid-cols-2 gap-3">
                 <Input
                   id="startDate"
                   type="date"
-                  value={form.startDate}
-                  onChange={(e) => set("startDate", e.target.value)}
+                  value={startDate}
+                  onChange={(e) => { setStartDate(e.target.value); setDateError(null); }}
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="endDate">End date</Label>
                 <Input
                   id="endDate"
                   type="date"
-                  value={form.endDate}
-                  onChange={(e) => set("endDate", e.target.value)}
+                  value={endDate}
+                  onChange={(e) => { setEndDate(e.target.value); setDateError(null); }}
                 />
+              </div>
+              {dateError && (
+                <p className="text-xs text-destructive">{dateError}</p>
+              )}
+            </div>
+
+            {/* Trip type */}
+            <div className="grid gap-1.5">
+              <Label>Trip type</Label>
+              <div className="flex rounded-lg border bg-muted p-1 gap-1">
+                {TRIP_TYPES.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    variant={tripType === opt.value ? "default" : "ghost"}
+                    size="sm"
+                    className="flex-1 text-xs"
+                    onClick={() => setTripType(tripType === opt.value ? "" : opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
               </div>
             </div>
 
-            <div className="grid gap-1.5">
-              <Label>Budget range</Label>
-              <Select
-                value={form.budgetRange}
-                onValueChange={(v) => set("budgetRange", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="under_500">Under $500</SelectItem>
-                  <SelectItem value="500_1500">$500 – $1,500</SelectItem>
-                  <SelectItem value="1500_3000">$1,500 – $3,000</SelectItem>
-                  <SelectItem value="3000_plus">$3,000+</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Group size + Total budget */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="groupSize">Group size</Label>
+                <Input
+                  id="groupSize"
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 6"
+                  value={groupSize}
+                  onChange={(e) => setGroupSize(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="totalBudget">Total budget</Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="totalBudget"
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 3000"
+                    className="pl-6"
+                    value={totalBudget}
+                    onChange={(e) => setTotalBudget(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
 
+            {/* Trip pace */}
             <div className="grid gap-1.5">
-              <Label>Trip purpose</Label>
-              <Select
-                value={form.tripPurpose}
-                onValueChange={(v) => set("tripPurpose", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a purpose" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="leisure">Leisure</SelectItem>
-                  <SelectItem value="adventure">Adventure</SelectItem>
-                  <SelectItem value="business">Business</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Trip pace</Label>
+              <div className="flex rounded-lg border bg-muted p-1 gap-1">
+                {PACE_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    variant={tripPace === opt.value ? "default" : "ghost"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setTripPace(tripPace === opt.value ? "" : opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="mt-2 w-full">
+            {/* Top priorities */}
+            <div className="grid gap-2">
+              <Label>
+                Top priorities
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                  (pick up to 3)
+                </span>
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {PRIORITY_OPTIONS.map((option) => {
+                  const selected = priorities.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => togglePriority(option)}
+                      disabled={!selected && priorities.length >= 3}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-sm transition-colors",
+                        selected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/50 hover:bg-muted border-border",
+                        !selected && priorities.length >= 3 && "opacity-40 cursor-not-allowed"
+                      )}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* AI notes */}
+            <div className="grid gap-1.5">
+              <Label htmlFor="aiNotes">
+                Notes for AI
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <textarea
+                id="aiNotes"
+                rows={3}
+                placeholder="Anything else the AI should know — dietary restrictions, accessibility needs, must-see spots…"
+                value={aiNotes}
+                onChange={(e) => setAiNotes(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+              />
+            </div>
+
+            <Button type="submit" disabled={loading} className="mt-1 w-full">
               {loading ? "Saving…" : "Create trip"}
             </Button>
           </form>

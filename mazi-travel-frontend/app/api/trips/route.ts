@@ -13,7 +13,18 @@ export async function POST(req: Request) {
   const userId = claimsData.claims.sub;
 
   const body = await req.json();
-  const { name, destination, startDate, endDate, budgetRange, tripPurpose } = body;
+  const {
+    name,
+    destination,
+    startDate,
+    endDate,
+    tripType,
+    groupSize,
+    totalBudget,
+    tripPace,
+    topPriorities,
+    aiNotes,
+  } = body;
 
   try {
     // Use the service-role client for the insert so it bypasses RLS cleanly
@@ -24,8 +35,12 @@ export async function POST(req: Request) {
         destination,
         start_date: startDate || null,
         end_date: endDate || null,
-        budget_range: budgetRange || null,
-        trip_purpose: tripPurpose || null,
+        trip_type: tripType || null,
+        group_size: groupSize ? Number(groupSize) : null,
+        total_budget: totalBudget ? Number(totalBudget) : null,
+        trip_pace: tripPace || null,
+        top_priorities: topPriorities?.length ? topPriorities : null,
+        ai_notes: aiNotes || null,
         user_id: userId,
       })
       .select()
