@@ -79,7 +79,10 @@ export async function POST(req: Request) {
       if (error) throw error;
     }
 
-    return NextResponse.json({ success: true, tripId });
+    return NextResponse.json({
+        success: true,
+        tripId: trip.id,
+        });
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message },

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 /* ================= TYPES ================= */
 
@@ -97,6 +98,7 @@ const emptyTrip: TripData = {
 export default function HelloPage() {
   const [trip, setTrip] = useState<TripData>(emptyTrip);
   const [submitted, setSubmitted] = useState(false);
+  const router = useRouter();
 
   function handleChange(field: keyof TripData, value: string) {
     setTrip((t) => ({ ...t, [field]: value }));
@@ -187,6 +189,9 @@ export default function HelloPage() {
         }
 
         console.log("Trip saved:", data.tripId);
+
+        // go to detail page
+        router.push(`/trips/${data.tripId}`);
         setSubmitted(true);
     } catch (err) {
         console.error(err);
