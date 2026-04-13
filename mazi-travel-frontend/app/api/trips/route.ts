@@ -1,92 +1,41 @@
 // app/api/trips/route.ts
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  // Verify the caller is authenticated
+  const sessionClient = await createClient();
+  const { data: claimsData } = await sessionClient.auth.getClaims();
+  if (!claimsData?.claims) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = claimsData.claims.sub;
 
-  const {
-    name,
-    description,
-    startDate,
-    endDate,
-    destination,
-    status,
-    dietaryRestrictions,
-    dietaryOther,
-    transportation,
-    housing,
-  } = body;
+  const body = await req.json();
+  const { name, destination, startDate, endDate, budgetRange, tripPurpose } = body;
 
   try {
-    /* ================= CREATE TRIP ================= */
-    const { data: trip, error: tripError } = await supabase
+    // Use the service-role client for the insert so it bypasses RLS cleanly
+    const { data: trip, error } = await supabase
       .from("trips")
       .insert({
         name,
-        description,
-        start_date: startDate,
-        end_date: endDate,
         destination,
-        status,
-        dietary_restrictions: dietaryRestrictions,
-        dietary_other: dietaryOther,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        budget_range: budgetRange || null,
+        trip_purpose: tripPurpose || null,
+        user_id: userId,
       })
       .select()
       .single();
 
-    if (tripError) throw tripError;
+    if (error) throw error;
 
-    const tripId = trip.id;
-
-    /* ================= INSERT TRANSPORT ================= */
-    if (transportation?.length) {
-      const transportRows = transportation.map((leg: any) => ({
-        trip_id: tripId,
-        transportation_type: leg.transportationType,
-        carrier: leg.carrier,
-        departure_location: leg.departureLocation,
-        arrival_location: leg.arrivalLocation,
-        departure_date: leg.departureDate,
-        arrival_date: leg.arrivalDate,
-        booking_ref: leg.bookingRef,
-        cost: Number(leg.cost || 0),
-      }));
-
-      const { error } = await supabase
-        .from("transportation_legs")
-        .insert(transportRows);
-
-      if (error) throw error;
-    }
-
-    /* ================= INSERT HOUSING ================= */
-    if (housing?.length) {
-      const housingRows = housing.map((h: any) => ({
-        trip_id: tripId,
-        name: h.name,
-        address: h.address,
-        check_in: h.checkIn,
-        check_out: h.checkOut,
-        booking_ref: h.bookingRef,
-        cost: Number(h.cost || 0),
-      }));
-
-      const { error } = await supabase
-        .from("housing_stays")
-        .insert(housingRows);
-
-      if (error) throw error;
-    }
-
-    return NextResponse.json({
-        success: true,
-        tripId: trip.id,
-        });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, tripId: trip.id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
