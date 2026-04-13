@@ -58,8 +58,7 @@ export default function LoginPage() {
         setError(error.message);
         setLoading(false);
       } else {
-        setMessage("Check your email to confirm your account, then sign in.");
-        setLoading(false);
+        router.push("/trips");
       }
     }
   }

@@ -95,6 +95,26 @@ When proposing schema changes:
 - Do not introduce major dependencies unless they solve a real MVP need
 - Keep AI-related code modular so prompts and generation logic can be changed later
 
+## UI components (shadcn/ui)
+
+shadcn/ui is installed and configured. Installed primitives live in `components/ui/`. Use them where they add clear value — do not reach for them by default.
+
+**Use shadcn components for:**
+- Interactive form elements: `Input`, `Label`, `Select`, `Button`
+- Structural containers: `Card` and its sub-components
+- Feedback and status: `Alert`, `Badge`
+- Layout helpers: `Separator`
+
+**Prefer plain Tailwind when:**
+- A component is purely decorative or one-off
+- A shadcn component would need heavy overriding to match the intended design
+- The element is a simple wrapper like a page background, heading, or static text block
+
+**Installing new components:**
+Run `npx shadcn@latest add <component>` from the project root. Do not hand-write shadcn component files.
+
+**Do not use shadcn** as a blanket rule for all UI. Raw Tailwind is fine and often simpler. The goal is consistency and saved time, not coverage.
+
 ## UX guidance
 
 - Prefer structured inputs where possible

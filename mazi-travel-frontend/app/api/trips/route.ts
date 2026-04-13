@@ -33,6 +33,13 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
+    // Add the creator as the owner participant
+    const { error: participantError } = await supabase
+      .from("trip_participants")
+      .insert({ trip_id: trip.id, user_id: userId, role: "owner" });
+
+    if (participantError) throw participantError;
+
     return NextResponse.json({ success: true, tripId: trip.id });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
