@@ -117,8 +117,6 @@ export default async function TripDetailPage({
         {/* AI summary */}
         <TripSummary tripId={id} existingSummary={trip.ai_summary ?? null} />
 
-        <FlightSummary tripId={id} existingPlan={trip.flight_summary ?? null} />
-
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <StatCard
@@ -201,6 +199,20 @@ export default async function TripDetailPage({
             <CopyInviteLink code={trip.invite_code} link={inviteLink} />
           </div>
         )}
+
+        <Separator className="my-8" />
+        {/* Flight summary */}
+        <div className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Flight summary
+          </h2>
+
+
+
+
+          <FlightSummary tripId={id} existingPlan={trip.flight_summary ?? null} />
+
+        </div>
 
       </div>
     </div>
