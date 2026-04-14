@@ -4,16 +4,20 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-type State = "loading" | "success" | "error";
+type State = "idle" | "loading" | "success" | "error";
 
 export default function TripSummary({
   tripId,
   existingSummary,
+  ready,
 }: {
   tripId: string;
   existingSummary: string | null;
+  ready: boolean;
 }) {
-  const [state, setState] = useState<State>(existingSummary ? "success" : "loading");
+  const [state, setState] = useState<State>(
+    existingSummary ? "success" : ready ? "loading" : "idle"
+  );
   const [summary, setSummary] = useState<string | null>(existingSummary);
 
   async function generate() {
@@ -30,7 +34,7 @@ export default function TripSummary({
   }
 
   useEffect(() => {
-    if (!existingSummary) generate();
+    if (!existingSummary && ready) generate();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -59,6 +63,8 @@ export default function TripSummary({
       </Card>
     );
   }
+
+  if (state === "idle") return null;
 
   // loading
   return (

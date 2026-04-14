@@ -60,7 +60,7 @@ function JoinTripInner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to join");
-      router.push(`/trips/${data.tripId}`);
+      router.push(`/trips/${data.tripId}/preferences`);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
       setStatus("error");
