@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/server";
 import { generateTripSummary } from "@/lib/ai/generate-summary";
+// import { generateFlightSummary } from "@/lib/ai/generate-flights";
 import { NextResponse } from "next/server";
 
 export async function POST(
@@ -19,7 +20,7 @@ export async function POST(
   // Fetch the trip
   const { data: trip, error } = await supabase
     .from("trips")
-    .select("destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary")
+    .select("destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary, flight_summary")
     .eq("id", id)
     .single();
 
@@ -34,10 +35,14 @@ export async function POST(
 
   try {
     const summary = await generateTripSummary(trip);
+    // const flights = await generateFlightSummary(trip);
+
+    // const fullSummary = `${summary}\n\nFlight Recommendations:\n${flights}`;
 
     await supabase
       .from("trips")
       .update({ ai_summary: summary })
+      // .update({ ai_summary: summary, flight_summary: flights })
       .eq("id", id);
 
     return NextResponse.json({ summary });
