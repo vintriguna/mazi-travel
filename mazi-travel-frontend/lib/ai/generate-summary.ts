@@ -8,6 +8,7 @@ type TripInput = {
   trip_pace: string | null;
   top_priorities: string[] | null;
   ai_notes: string | null;
+  flight_summary: string | null;
 };
 
 const TRIP_TYPE_LABELS: Record<string, string> = {

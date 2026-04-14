@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import CopyInviteLink from "./CopyInviteLink";
 import TripSummary from "./TripSummary";
+import FlightSummary from "./FlightSummary";
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
   vacation: "Vacation",
@@ -115,6 +116,8 @@ export default async function TripDetailPage({
 
         {/* AI summary */}
         <TripSummary tripId={id} existingSummary={trip.ai_summary ?? null} />
+
+        <FlightSummary tripId={id} existingPlan={trip.flight_summary ?? null} />
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-3 mb-6">
