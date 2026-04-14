@@ -1,4 +1,5 @@
 type TripInput = {
+    origin: string | null;
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -26,6 +27,7 @@ const PACE_LABELS: Record<string, string> = {
 function buildPrompt(trip: TripInput): string {
   const lines: string[] = [];
 
+  if (trip.origin) lines.push(`Origin: ${trip.origin}`);
   if (trip.destination) lines.push(`Destination: ${trip.destination}`);
   if (trip.start_date && trip.end_date) {
     lines.push(`Dates: ${trip.start_date} to ${trip.end_date}`);
@@ -161,7 +163,7 @@ export async function generateFlightPlan(
    * - outbound_date :contentReference[oaicite:0]{index=0}
    */
   const flightParams = {
-    from: "ORD", // TODO: replace with user location later
+    from: getAirportCode(trip.origin),
     to: getAirportCode(trip.destination),
     departure_date: trip.start_date,
     return_date: trip.end_date ?? undefined,

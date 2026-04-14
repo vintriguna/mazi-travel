@@ -37,6 +37,7 @@ export default function NewTripPage() {
 
   const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
+  const [origin, setOrigin] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [tripType, setTripType] = useState("");
@@ -73,6 +74,7 @@ export default function NewTripPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
+          origin: origin || null,
           destination,
           startDate: startDate || null,
           endDate: endDate || null,
@@ -112,6 +114,18 @@ export default function NewTripPage() {
                 placeholder="e.g. Tokyo Spring 2025"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            {/* Origin city */}
+            <div className="grid gap-1.5">
+              <Label htmlFor="origin">Origin city</Label>
+              <Input
+                id="origin"
+                required
+                placeholder="e.g. Chicago, New York, London"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
               />
             </div>
 

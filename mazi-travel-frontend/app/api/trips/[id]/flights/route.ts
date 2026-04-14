@@ -34,7 +34,7 @@ export async function POST(
   const { data: trip, error: tripError } = await sessionClient
     .from("trips")
     .select(
-      "destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary, flight_summary"
+      "origin, destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary, flight_summary"
     )
     .eq("id", id)
     .single();
