@@ -96,9 +96,17 @@ export default async function TripDetailPage({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-4xl font-semibold tracking-tight">{trip.name}</h1>
-              {trip.destination && (
-                <p className="mt-1.5 text-lg text-muted-foreground">{trip.destination}</p>
-              )}
+              <div className="mt-1.5 flex items-center gap-2 text-lg text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {trip.origin ?? "—"}
+                </span>
+
+                <span>→</span>
+
+                <span className="font-medium text-foreground">
+                  {trip.destination ?? "—"}
+                </span>
+              </div>
               {dateValue && (
                 <p className="mt-1 text-sm text-muted-foreground">{dateValue}</p>
               )}

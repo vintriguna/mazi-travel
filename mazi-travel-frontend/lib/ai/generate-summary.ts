@@ -1,4 +1,5 @@
 type TripInput = {
+  origin: string | null;
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -25,6 +26,8 @@ const PACE_LABELS: Record<string, string> = {
 
 function buildPrompt(trip: TripInput): string {
   const lines: string[] = [];
+
+  if (trip.origin) lines.push(`Origin: ${trip.origin}`);
 
   if (trip.destination) lines.push(`Destination: ${trip.destination}`);
   if (trip.start_date && trip.end_date) {

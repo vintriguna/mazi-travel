@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const {
     name,
+    origin,
     destination,
     startDate,
     endDate,
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
       .from("trips")
       .insert({
         name,
+        origin,
         destination,
         start_date: startDate || null,
         end_date: endDate || null,

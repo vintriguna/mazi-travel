@@ -29,6 +29,17 @@ type FlightPlan = {
   };
 };
 
+function safeParseFlightPlan(value: string | null): FlightPlan | null {
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value);
+  } catch (err) {
+    console.error("❌ Failed to parse flight plan:", value);
+    return null; // fail gracefully instead of crashing UI
+  }
+}
+
 export default function FlightPlan({
   tripId,
   existingPlan,
@@ -41,8 +52,8 @@ export default function FlightPlan({
   );
 
   const [plan, setPlan] = useState<FlightPlan | null>(
-    existingPlan ? JSON.parse(existingPlan) : null
-  );
+    safeParseFlightPlan(existingPlan)
+    );
 
   async function generate() {
     setState("loading");
@@ -57,8 +68,17 @@ export default function FlightPlan({
       if (!res.ok) throw new Error(data.error ?? "Failed to generate");
 
       // IMPORTANT: ensure object format
-      const parsed =
-        typeof data.plan === "string" ? JSON.parse(data.plan) : data.plan;
+      let parsed: FlightPlan | null = null;
+
+        try {
+        parsed =
+            typeof data.plan === "string"
+            ? JSON.parse(data.plan)
+            : data.plan;
+        } catch (err) {
+        console.error("❌ API returned invalid JSON:", data.plan);
+        throw new Error("Invalid flight plan format from server");
+        }
 
       setPlan(parsed);
       setState("success");
