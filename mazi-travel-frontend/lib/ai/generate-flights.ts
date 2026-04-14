@@ -140,20 +140,91 @@ export async function generateFlightPlan(
    * 🧠 Simple airport mapping (temporary)
    * You can replace this later with SerpAPI autocomplete
    */
-  function getAirportCode(destination: string | null): string {
-    if (!destination) return "LAX";
+  function getAirportCode(location: string | null): string | null {
+    if (!location) return null;
+
+    const normalized = location
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, " ")
+        .replace(/,/g, "");
 
     const map: Record<string, string> = {
-      paris: "CDG",
-      london: "LHR",
-      tokyo: "HND",
-      new_york: "JFK",
-      los_angeles: "LAX",
-      chicago: "ORD",
+        // 🇺🇸 United States major hubs
+        chicago: "ORD",
+        "chicago il": "ORD",
+
+        new_york: "JFK",
+        "new york": "JFK",
+        "new york city": "JFK",
+        nyc: "JFK",
+
+        los_angeles: "LAX",
+        "los angeles": "LAX",
+        la: "LAX",
+
+        san_francisco: "SFO",
+        sf: "SFO",
+
+        miami: "MIA",
+        seattle: "SEA",
+        boston: "BOS",
+        washington: "IAD",
+        dc: "IAD",
+
+        // 🇪🇺 Europe
+        london: "LHR",
+        "london uk": "LHR",
+
+        paris: "CDG",
+        "paris france": "CDG",
+
+        rome: "FCO",
+        amsterdam: "AMS",
+        madrid: "MAD",
+        barcelona: "BCN",
+        berlin: "BER",
+        frankfurt: "FRA",
+
+        // 🇯🇵 Asia
+        tokyo: "HND",
+        "tokyo japan": "HND",
+
+        osaka: "KIX",
+        seoul: "ICN",
+        singapore: "SIN",
+        bangkok: "BKK",
+        hong_kong: "HKG",
+
+        // 🇦🇪 Middle East
+        dubai: "DXB",
+        doha: "DOH",
+        abu_dhabi: "AUH",
+
+        // 🇦🇺 Oceania
+        sydney: "SYD",
+        melbourne: "MEL",
+
+        // 🇮🇳 India
+        delhi: "DEL",
+        mumbai: "BOM",
+        bangalore: "BLR",
+
+        // 🇮🇩 Southeast Asia (important for your use case)
+        bali: "DPS",
+        "denpasar bali": "DPS",
+        jakarta: "CGK",
+
+        // 🇲🇽 / LATAM
+        mexico_city: "MEX",
+        "mexico city": "MEX",
+        cancun: "CUN",
+        bogota: "BOG",
+        lima: "LIM",
     };
 
-    return map[destination.toLowerCase()] ?? "LAX";
-  }
+    return map[normalized] ?? null;
+    }
 
   /**
    * ✈️ Build flight params internally
@@ -162,12 +233,26 @@ export async function generateFlightPlan(
    * - arrival_id
    * - outbound_date :contentReference[oaicite:0]{index=0}
    */
+
+    const from = getAirportCode(trip.origin);
+    const to = getAirportCode(trip.destination);
+
+    if (!from) {
+    throw new Error(`Invalid or unsupported origin: ${trip.origin}`);
+    }
+
+    if (!to) {
+    throw new Error(`Invalid or unsupported destination: ${trip.destination}`);
+    }
+
   const flightParams = {
-    from: getAirportCode(trip.origin),
-    to: getAirportCode(trip.destination),
+    from,
+    to,
     departure_date: trip.start_date,
     return_date: trip.end_date ?? undefined,
   };
+
+  
 
   // 1. Fetch flights
   const flights = await searchFlights(flightParams);

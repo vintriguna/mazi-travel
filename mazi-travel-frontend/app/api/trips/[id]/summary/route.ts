@@ -20,7 +20,7 @@ export async function POST(
   // Fetch the trip
   const { data: trip, error } = await supabase
     .from("trips")
-    .select("origin, destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary, flight_summary")
+    .select("destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary, flight_summary")
     .eq("id", id)
     .single();
 
