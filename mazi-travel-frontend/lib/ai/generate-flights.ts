@@ -181,14 +181,66 @@ export async function generateFlightPlan(
       model: "gpt-4.1-mini",
       messages: [
         {
-          role: "system",
-          content:
-            "You are a travel assistant that helps users find and choose the best flights. Pick the top 1–3 flight options and explain your reasoning clearly.",
-        },
+            role: "system",
+            content: `
+            You are a flight recommendation engine.
+
+            You MUST output ONLY valid JSON.
+            No markdown.
+            No explanation.
+            No extra text.
+
+            Return data in this exact structure:
+
+            {
+            "title": string,
+            "summary": string,
+            "flights": [
+                {
+                "rank": number,
+                "airline": string,
+                "route": string,
+                "price_per_person": number,
+                "duration_minutes": number,
+                "departure_time": string,
+                "arrival_time": string,
+                "aircraft": string,
+                "stops": number,
+                "pros": string[],
+                "cons": string[],
+                "best_for": string
+                }
+            ],
+            "recommendation": {
+                "best_option_rank": number,
+                "reason": string
+            }
+            }
+
+            Rules:
+            - flights must be max 3 items
+            - durations must be in minutes (number only)
+            - price must be number only (no $ or commas)
+            - always include pros and cons as arrays
+            - keep language simple, consistent, and concise
+            - max 2 flights
+            - Keep all strings under 120 characters
+            - max 3 pros
+            - max 3 cons
+            `
+            },
         {
-          role: "user",
-          content: buildFlightPlannerPrompt(trip, flights),
-        },
+            role: "user",
+            content: `
+            Trip Details:
+            ${buildPrompt(trip)}
+
+            Flight Data:
+            ${JSON.stringify(flights, null, 2)}
+
+            Return the structured JSON exactly.
+            `
+            },
       ],
       temperature: 0.7,
       max_tokens: 500,
