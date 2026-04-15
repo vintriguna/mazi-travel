@@ -1,7 +1,9 @@
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/server";
-import { generateTripSummary } from "@/lib/ai/generate-summary";
+import { generateFlightPlan } from "@/lib/ai/generate-flights";
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(
   _req: Request,
@@ -9,21 +11,27 @@ export async function POST(
 ) {
   const { id } = await params;
 
-  // Verify auth
+  console.log("🚀 [FLIGHTS] Starting request for trip:", id);
+
+  // Auth check
   const sessionClient = await createClient();
-  const { data: claimsData } = await sessionClient.auth.getClaims();
+  const { data: claimsData, error: authError } = await sessionClient.auth.getClaims();
+
+  if (authError) {
+    return NextResponse.json({ error: "Auth error" }, { status: 401 });
+  }
   if (!claimsData?.claims) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Fetch the trip
-  const { data: trip, error } = await supabase
+  // Fetch trip
+  const { data: trip, error: tripError } = await sessionClient
     .from("trips")
-    .select("origin, destination, start_date, end_date, trip_type, group_size, ai_summary, flight_summary")
+    .select("origin, destination, start_date, end_date, trip_type, group_size, flight_summary")
     .eq("id", id)
     .single();
 
-  if (error || !trip) {
+  if (tripError || !trip) {
     return NextResponse.json({ error: "Trip not found" }, { status: 404 });
   }
 
@@ -51,26 +59,32 @@ export async function POST(
     );
   }
 
-  // Idempotent: return cached summary if already generated
-  if (trip.ai_summary) {
-    return NextResponse.json({ summary: trip.ai_summary });
+  // Idempotent check
+  if (trip.flight_summary) {
+    console.log("⚡ Returning cached flight summary");
+    return NextResponse.json({ plan: trip.flight_summary });
   }
 
   try {
-    const summary = await generateTripSummary({
+    console.log("✈️ Generating flight plan...");
+    const flights = await generateFlightPlan({
       ...trip,
       participant_preferences: preferences ?? [],
     });
 
-    await supabase
+    const { error: updateError } = await sessionClient
       .from("trips")
-      .update({ ai_summary: summary })
+      .update({ flight_summary: flights })
       .eq("id", id);
 
-    return NextResponse.json({ summary });
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ plan: flights });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[summary route]", message);
+    console.error("🔥 Route error:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

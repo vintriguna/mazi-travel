@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 const TRIP_TYPES = [
   { value: "vacation", label: "Vacation" },
@@ -14,45 +13,18 @@ const TRIP_TYPES = [
   { value: "work_conference", label: "Work / conference" },
 ];
 
-const PACE_OPTIONS = [
-  { value: "relaxed", label: "Relaxed" },
-  { value: "balanced", label: "Balanced" },
-  { value: "packed", label: "Packed" },
-];
-
-const PRIORITY_OPTIONS = [
-  "Food & dining",
-  "Nightlife",
-  "Outdoor activities",
-  "Beach / water",
-  "Museums & culture",
-  "Shopping",
-  "Adventure sports",
-  "Relaxation & wellness",
-  "Local experiences",
-];
-
 export default function NewTripPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [destination, setDestination] = useState("");
+  const [origin, setOrigin] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [tripType, setTripType] = useState("");
   const [groupSize, setGroupSize] = useState("");
-  const [totalBudget, setTotalBudget] = useState("");
-  const [tripPace, setTripPace] = useState("");
-  const [priorities, setPriorities] = useState<string[]>([]);
-  const [aiNotes, setAiNotes] = useState("");
   const [dateError, setDateError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  function togglePriority(option: string) {
-    setPriorities((prev) =>
-      prev.includes(option) ? prev.filter((p) => p !== option) : [...prev, option]
-    );
-  }
 
   function validateDates(): boolean {
     if (startDate && endDate && endDate < startDate) {
@@ -73,20 +45,17 @@ export default function NewTripPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
+          origin,
           destination,
           startDate: startDate || null,
           endDate: endDate || null,
           tripType: tripType || null,
           groupSize: groupSize ? Number(groupSize) : null,
-          totalBudget: totalBudget ? Number(totalBudget) : null,
-          tripPace: tripPace || null,
-          topPriorities: priorities.length ? priorities : null,
-          aiNotes: aiNotes || null,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save trip");
-      router.push(`/trips/${data.tripId}`);
+      router.push(`/trips/${data.tripId}/preferences`);
     } catch (err) {
       console.error(err);
       alert("Failed to save trip. Please try again.");
@@ -112,6 +81,18 @@ export default function NewTripPage() {
                 placeholder="e.g. Tokyo Spring 2025"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            {/* Origin city */}
+            <div className="grid gap-1.5">
+              <Label htmlFor="origin">Origin city</Label>
+              <Input
+                id="origin"
+                required
+                placeholder="e.g. Chicago, New York, London"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
               />
             </div>
 
@@ -168,104 +149,23 @@ export default function NewTripPage() {
               </div>
             </div>
 
-            {/* Group size + Total budget */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="groupSize">Group size</Label>
-                <Input
-                  id="groupSize"
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 6"
-                  value={groupSize}
-                  onChange={(e) => setGroupSize(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="totalBudget">Total budget</Label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
-                    $
-                  </span>
-                  <Input
-                    id="totalBudget"
-                    type="number"
-                    min={0}
-                    placeholder="e.g. 3000"
-                    className="pl-6"
-                    value={totalBudget}
-                    onChange={(e) => setTotalBudget(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Trip pace */}
+            {/* Group size */}
             <div className="grid gap-1.5">
-              <Label>Trip pace</Label>
-              <div className="flex rounded-lg border bg-muted p-1 gap-1">
-                {PACE_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.value}
-                    type="button"
-                    variant={tripPace === opt.value ? "default" : "ghost"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setTripPace(tripPace === opt.value ? "" : opt.value)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Top priorities */}
-            <div className="grid gap-2">
-              <Label>
-                Top priorities
+              <Label htmlFor="groupSize">
+                Group size
                 <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                  (pick up to 3)
+                  (max 4)
                 </span>
               </Label>
-              <div className="flex flex-wrap gap-2">
-                {PRIORITY_OPTIONS.map((option) => {
-                  const selected = priorities.includes(option);
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => togglePriority(option)}
-                      disabled={!selected && priorities.length >= 3}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-sm transition-colors",
-                        selected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted/50 hover:bg-muted border-border",
-                        !selected && priorities.length >= 3 && "opacity-40 cursor-not-allowed"
-                      )}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* AI notes */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="aiNotes">
-                Notes for AI
-                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
-              <textarea
-                id="aiNotes"
-                rows={3}
-                placeholder="Anything else the AI should know — dietary restrictions, accessibility needs, must-see spots…"
-                value={aiNotes}
-                onChange={(e) => setAiNotes(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+              <Input
+                id="groupSize"
+                type="number"
+                min={1}
+                max={4}
+                required
+                placeholder="1–4"
+                value={groupSize}
+                onChange={(e) => setGroupSize(e.target.value)}
               />
             </div>
 
