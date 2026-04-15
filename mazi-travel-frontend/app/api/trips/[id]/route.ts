@@ -69,3 +69,67 @@ export async function PATCH(
 
   return NextResponse.json({ success: true });
 }
+
+// DELETE /api/trips/[id] — owner deletes trip
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const sessionClient = await createClient();
+  const { data: claimsData } = await sessionClient.auth.getClaims();
+
+  if (!claimsData?.claims) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = claimsData.claims.sub;
+
+  // Verify trip exists and user is owner
+  const { data: trip, error: tripError } = await supabase
+    .from("trips")
+    .select("user_id")
+    .eq("id", id)
+    .single();
+
+  if (tripError || !trip) {
+    return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+  }
+
+  if (trip.user_id !== userId) {
+    return NextResponse.json(
+      { error: "Only the owner can delete this trip" },
+      { status: 403 }
+    );
+  }
+
+  // Optional: delete related participants first (if no cascade in DB)
+  const { error: participantsError } = await supabase
+    .from("trip_participants")
+    .delete()
+    .eq("trip_id", id);
+
+  if (participantsError) {
+    return NextResponse.json(
+      { error: participantsError.message },
+      { status: 500 }
+    );
+  }
+
+  // Delete the trip
+  const { error: deleteError } = await supabase
+    .from("trips")
+    .delete()
+    .eq("id", id);
+
+  if (deleteError) {
+    return NextResponse.json(
+      { error: deleteError.message },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ success: true });
+}
+
