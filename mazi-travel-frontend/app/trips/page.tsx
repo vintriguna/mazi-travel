@@ -14,6 +14,7 @@ type Trip = {
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
+  image_url?: string | null;
 };
 
 // function TripCard({ trip }: { trip: Trip }) {
@@ -46,14 +47,14 @@ export default async function TripsPage() {
   // Trips the user created
   const { data: ownedTrips } = await supabase
     .from("trips")
-    .select("id, name, destination, start_date, end_date")
+    .select("id, name, destination, start_date, end_date, image_url")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   // Trips the user joined (but didn't create)
   const { data: participantRows } = await supabase
     .from("trip_participants")
-    .select("trip_id, trips(id, name, destination, start_date, end_date)")
+    .select("trip_id, trips(id, name, destination, start_date, end_date, image_url)")
     .eq("user_id", userId)
     .eq("role", "member");
 

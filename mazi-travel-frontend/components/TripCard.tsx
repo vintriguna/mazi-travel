@@ -11,6 +11,7 @@ type Trip = {
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
+  image_url?: string | null;
 };
 
 export default function TripCard({
@@ -45,31 +46,40 @@ export default function TripCard({
 
   return (
     <Link href={`/trips/${trip.id}`}>
-      <Card className="transition-colors hover:bg-accent cursor-pointer">
-        <CardContent className="px-5 py-4 flex items-start justify-between gap-4">
-          <div>
-            <div className="font-semibold">{trip.name}</div>
-            {trip.destination && (
-              <div className="mt-1 text-sm text-muted-foreground">
-                {trip.destination}
-              </div>
-            )}
-            {(trip.start_date || trip.end_date) && (
-              <div className="mt-1 text-xs text-muted-foreground">
-                {trip.start_date}
-                {trip.end_date ? ` → ${trip.end_date}` : ""}
-              </div>
-            )}
+      <Card className="transition-colors hover:bg-accent cursor-pointer overflow-hidden">
+        {trip.image_url && (
+          <div className="w-full bg-muted/40 flex items-center justify-center">
+            <img
+              src={trip.image_url}
+              alt={trip.destination ?? "Trip image"}
+              className="w-full object-cover"
+              style={{ display: 'block' }}
+            />
           </div>
-
+        )}
+        <CardContent className="px-5 py-4 flex flex-col gap-2">
+          <div className="font-semibold text-lg">{trip.name}</div>
+          {trip.destination && (
+            <div className="text-sm text-muted-foreground">
+              {trip.destination}
+            </div>
+          )}
+          {(trip.start_date || trip.end_date) && (
+            <div className="text-xs text-muted-foreground">
+              {trip.start_date}
+              {trip.end_date ? ` → ${trip.end_date}` : ""}
+            </div>
+          )}
           {isOwner && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-            >
-              Delete
-            </Button>
+            <div className="mt-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+              >
+                Delete
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>

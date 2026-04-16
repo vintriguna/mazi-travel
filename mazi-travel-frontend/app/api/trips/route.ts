@@ -2,6 +2,7 @@
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTripImage } from "@/lib/ai/generate-images";
 
 export async function POST(req: Request) {
   // Verify the caller is authenticated
@@ -25,6 +26,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Fetch image URL for the destination
+    let image_url: string | null = null;
+    try {
+      image_url = await getTripImage(destination);
+    } catch (e) {
+      image_url = null; // fallback if image fetch fails
+    }
+
     const { data: trip, error } = await supabase
       .from("trips")
       .insert({
@@ -36,6 +45,7 @@ export async function POST(req: Request) {
         trip_type: tripType || null,
         group_size: parsedGroupSize,
         user_id: userId,
+        image_url,
       })
       .select()
       .single();
