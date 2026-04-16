@@ -20,12 +20,36 @@ export async function POST(
   // Fetch the trip
   const { data: trip, error } = await supabase
     .from("trips")
-    .select("destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary, flight_summary")
+    .select("origin, destination, start_date, end_date, trip_type, group_size, ai_summary, flight_summary")
     .eq("id", id)
     .single();
 
   if (error || !trip) {
     return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+  }
+
+  // Readiness check: all participants must have submitted preferences
+  const { count: participantsJoined } = await supabase
+    .from("trip_participants")
+    .select("*", { count: "exact", head: true })
+    .eq("trip_id", id);
+
+  const { data: preferences, count: preferencesSubmitted } = await supabase
+    .from("participant_preferences")
+    .select("*", { count: "exact" })
+    .eq("trip_id", id);
+
+  const groupSize = trip.group_size ?? 0;
+  const allReady =
+    groupSize > 0 &&
+    (participantsJoined ?? 0) >= groupSize &&
+    (preferencesSubmitted ?? 0) >= groupSize;
+
+  if (!allReady) {
+    return NextResponse.json(
+      { error: "not_ready", message: "Waiting for all participants to submit preferences" },
+      { status: 400 }
+    );
   }
 
   // Idempotent: return cached summary if already generated
@@ -34,10 +58,10 @@ export async function POST(
   }
 
   try {
-    const summary = await generateTripSummary(trip);
-    // const flights = await generateFlightSummary(trip);
-
-    // const fullSummary = `${summary}\n\nFlight Recommendations:\n${flights}`;
+    const summary = await generateTripSummary({
+      ...trip,
+      participant_preferences: preferences ?? [],
+    });
 
     await supabase
       .from("trips")

@@ -13,22 +13,18 @@ export async function POST(req: Request) {
   const userId = claimsData.claims.sub;
 
   const body = await req.json();
-  const {
-    name,
-    origin,
-    destination,
-    startDate,
-    endDate,
-    tripType,
-    groupSize,
-    totalBudget,
-    tripPace,
-    topPriorities,
-    aiNotes,
-  } = body;
+  const { name, origin, destination, startDate, endDate, tripType, groupSize } = body;
+
+  // Validate group size
+  const parsedGroupSize = groupSize ? Number(groupSize) : null;
+  if (!parsedGroupSize || parsedGroupSize < 1 || parsedGroupSize > 4) {
+    return NextResponse.json(
+      { error: "Group size must be between 1 and 4" },
+      { status: 400 }
+    );
+  }
 
   try {
-    // Use the service-role client for the insert so it bypasses RLS cleanly
     const { data: trip, error } = await supabase
       .from("trips")
       .insert({
@@ -38,11 +34,7 @@ export async function POST(req: Request) {
         start_date: startDate || null,
         end_date: endDate || null,
         trip_type: tripType || null,
-        group_size: groupSize ? Number(groupSize) : null,
-        total_budget: totalBudget ? Number(totalBudget) : null,
-        trip_pace: tripPace || null,
-        top_priorities: topPriorities?.length ? topPriorities : null,
-        ai_notes: aiNotes || null,
+        group_size: parsedGroupSize,
         user_id: userId,
       })
       .select()

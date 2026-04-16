@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateFlightPlan } from "@/lib/ai/generate-flights";
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic"; // avoid caching issues
+export const dynamic = "force-dynamic";
 
 export async function POST(
   _req: Request,
@@ -13,76 +13,78 @@ export async function POST(
 
   console.log("🚀 [FLIGHTS] Starting request for trip:", id);
 
-  // ✅ Auth check
+  // Auth check
   const sessionClient = await createClient();
-  const { data: claimsData, error: authError } =
-    await sessionClient.auth.getClaims();
+  const { data: claimsData, error: authError } = await sessionClient.auth.getClaims();
 
   if (authError) {
-    console.error("❌ Auth error:", authError);
     return NextResponse.json({ error: "Auth error" }, { status: 401 });
   }
-
   if (!claimsData?.claims) {
-    console.warn("⚠️ No auth claims found");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  console.log("✅ Authenticated user:", claimsData.claims.sub);
-
-  // ✅ Fetch trip
+  // Fetch trip
   const { data: trip, error: tripError } = await sessionClient
     .from("trips")
-    .select(
-      "origin, destination, start_date, end_date, trip_type, group_size, total_budget, trip_pace, top_priorities, ai_notes, ai_summary, flight_summary"
-    )
+    .select("origin, destination, start_date, end_date, trip_type, group_size, flight_summary")
     .eq("id", id)
     .single();
 
-  if (tripError) {
-    console.error("❌ Trip fetch error:", tripError);
+  if (tripError || !trip) {
     return NextResponse.json({ error: "Trip not found" }, { status: 404 });
   }
 
-  console.log("📦 Trip data:", trip);
+  // Readiness check: all participants must have submitted preferences
+  const { count: participantsJoined } = await supabase
+    .from("trip_participants")
+    .select("*", { count: "exact", head: true })
+    .eq("trip_id", id);
 
-  // ✅ Idempotent check (FIXED)
+  const { data: preferences, count: preferencesSubmitted } = await supabase
+    .from("participant_preferences")
+    .select("*", { count: "exact" })
+    .eq("trip_id", id);
+
+  const groupSize = trip.group_size ?? 0;
+  const allReady =
+    groupSize > 0 &&
+    (participantsJoined ?? 0) >= groupSize &&
+    (preferencesSubmitted ?? 0) >= groupSize;
+
+  if (!allReady) {
+    return NextResponse.json(
+      { error: "not_ready", message: "Waiting for all participants to submit preferences" },
+      { status: 400 }
+    );
+  }
+
+  // Idempotent check
   if (trip.flight_summary) {
     console.log("⚡ Returning cached flight summary");
     return NextResponse.json({ plan: trip.flight_summary });
   }
 
   try {
-    // ✅ Generate flights
     console.log("✈️ Generating flight plan...");
-    const flights = await generateFlightPlan(trip);
+    const flights = await generateFlightPlan({
+      ...trip,
+      participant_preferences: preferences ?? [],
+    });
 
-    console.log("🧠 AI flight result:", flights);
-
-    // ✅ Update DB (IMPORTANT: use sessionClient)
-    const { data: updateData, error: updateError } = await sessionClient
+    const { error: updateError } = await sessionClient
       .from("trips")
       .update({ flight_summary: flights })
-      .eq("id", id)
-      .select();
+      .eq("id", id);
 
     if (updateError) {
-      console.error("❌ Supabase update error:", updateError);
-      return NextResponse.json(
-        { error: updateError.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
-
-    console.log("✅ Supabase update success:", updateData);
 
     return NextResponse.json({ plan: flights });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-
-    console.error("🔥 Route error:", message);
-    console.error("🔥 Full error:", err);
-
+    console.error("🔥 Route error:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

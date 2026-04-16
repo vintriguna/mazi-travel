@@ -5,20 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import CopyInviteLink from "./CopyInviteLink";
 import TripSummary from "./TripSummary";
 import FlightSummary from "./FlightSummary";
+import GroupSummary from "./GroupSummary";
+import TripSuggestions from "./TripSuggestions";
+import { aggregatePreferences } from "@/lib/preferences";
+import type { ParticipantPreference } from "@/lib/preferences";
+import UpdateGroupSize from "./UpdateGroupSize";
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
   vacation: "Vacation",
   event_celebration: "Event / celebration",
   work_conference: "Work / conference",
-};
-
-const PACE_LABELS: Record<string, string> = {
-  relaxed: "Relaxed",
-  balanced: "Balanced",
-  packed: "Packed",
 };
 
 export default async function TripDetailPage({
@@ -68,6 +68,37 @@ export default async function TripDetailPage({
     }));
   }
 
+  // Participant preferences
+  const { data: prefsData } = await supabase
+    .from("participant_preferences")
+    .select("*")
+    .eq("trip_id", id);
+
+  const preferences: ParticipantPreference[] = prefsData ?? [];
+  const participantsJoined = participants?.length ?? 0;
+  const preferencesSubmitted = preferences.length;
+  const groupSize = trip.group_size ?? 0;
+  const allReady =
+    groupSize > 0 &&
+    participantsJoined >= groupSize &&
+    preferencesSubmitted >= groupSize;
+
+  const currentUserIsParticipant = participants?.some((p) => p.user_id === currentUserId) ?? false;
+  const currentUserSubmitted = preferences.some((p) => p.user_id === currentUserId);
+
+  const aggregated = aggregatePreferences(preferences);
+
+  // Existing suggestions
+  const { data: suggestionsData } = await supabase
+    .from("trip_suggestions")
+    .select("*")
+    .eq("trip_id", id)
+    .order("rank", { ascending: true });
+
+  const existingSuggestions = suggestionsData && suggestionsData.length > 0
+    ? suggestionsData
+    : null;
+
   // Build invite link
   const headersList = await headers();
   const host = headersList.get("host") ?? "localhost:3000";
@@ -100,9 +131,7 @@ export default async function TripDetailPage({
                 <span className="font-medium text-foreground">
                   {trip.origin ?? "—"}
                 </span>
-
                 <span>→</span>
-
                 <span className="font-medium text-foreground">
                   {trip.destination ?? "—"}
                 </span>
@@ -122,85 +151,131 @@ export default async function TripDetailPage({
           </div>
         </div>
 
-        {/* AI summary */}
-        <TripSummary tripId={id} existingSummary={trip.ai_summary ?? null} />
-
         {/* Stats grid */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <StatCard
-            label="Group size"
-            value={trip.group_size ? `${trip.group_size} people` : "—"}
-          />
-          <StatCard
-            label="Total budget"
-            value={trip.total_budget ? `$${trip.total_budget.toLocaleString()}` : "—"}
-          />
-          <StatCard
-            label="Pace"
-            value={trip.trip_pace ? (PACE_LABELS[trip.trip_pace] ?? trip.trip_pace) : "—"}
-          />
+        <div className="mb-6">
+          <Card>
+            <CardContent className="px-4 py-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Group size
+              </p>
+              <p className="mt-1.5 text-base font-semibold flex items-center">
+                {groupSize ? `${groupSize} people` : "—"}
+                {isOwner && groupSize > 0 && (
+                  <UpdateGroupSize tripId={id} currentSize={groupSize} />
+                )}
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Priorities */}
-        {trip.top_priorities?.length > 0 && (
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Priorities
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {trip.top_priorities.map((p: string) => (
-                <span
-                  key={p}
-                  className="rounded-full border bg-background px-3 py-1 text-sm"
-                >
-                  {p}
-                </span>
-              ))}
-            </div>
-          </div>
+        {/* Submit preferences CTA */}
+        {currentUserIsParticipant && !currentUserSubmitted && (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="px-5 py-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Your preferences are needed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Submit your preferences so the group plan can be generated.
+                </p>
+              </div>
+              <Link href={`/trips/${id}/preferences`}>
+                <Button size="sm">Submit now</Button>
+              </Link>
+            </CardContent>
+          </Card>
         )}
 
-        {/* Additional notes */}
-        {trip.ai_notes && (
+        {/* Group summary (non-AI) */}
+        {preferencesSubmitted > 0 && (
+          <GroupSummary aggregated={aggregated} totalSubmitted={preferencesSubmitted} />
+        )}
+
+        <Separator className="my-8" />
+
+        {/* AI summary */}
+        {allReady ? (
+          <TripSummary tripId={id} existingSummary={trip.ai_summary ?? null} ready={true} />
+        ) : (
           <Card className="mb-6">
             <CardContent className="px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                Notes
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                AI Summary
               </p>
-              <p className="text-sm text-foreground/80 leading-relaxed">{trip.ai_notes}</p>
+              <p className="text-sm text-muted-foreground">
+                Will generate once all {groupSize} participants submit their preferences.
+              </p>
             </CardContent>
           </Card>
         )}
 
         <Separator className="my-8" />
 
+        {/* Trip suggestions */}
+        <div className="mb-8">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Trip Suggestions
+          </h2>
+          {allReady ? (
+            <TripSuggestions
+              tripId={id}
+              existingSuggestions={existingSuggestions}
+              ready={true}
+            />
+          ) : (
+            <Card>
+              <CardContent className="px-5 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Will generate once all {groupSize} participants submit their preferences.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <Separator className="my-8" />
+
         {/* Participants */}
         <div className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Participants
-          </h2>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Participants
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {preferencesSubmitted} of {groupSize} joined
+            </span>
+          </div>
           <div className="grid gap-2">
-            {participantList.map((p) => (
-              <Card key={p.user_id}>
-                <CardContent className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm">
-                    {p.email}
-                    {p.user_id === currentUserId && (
-                      <span className="ml-1.5 text-muted-foreground">(you)</span>
-                    )}
-                  </span>
-                  <Badge variant={p.role === "owner" ? "default" : "secondary"}>
-                    {p.role}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
+            {participantList.map((p) => {
+              const submitted = preferences.some((pref) => pref.user_id === p.user_id);
+              return (
+                <Card key={p.user_id}>
+                  <CardContent className="flex items-center justify-between px-4 py-3">
+                    <span className="text-sm">
+                      {p.email}
+                      {p.user_id === currentUserId && (
+                        <span className="ml-1.5 text-muted-foreground">(you)</span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {submitted ? (
+                        <span className="text-xs text-green-600">Joined</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not yet joined</span>
+                      )}
+                      <Badge variant={p.role === "owner" ? "default" : "secondary"}>
+                        {p.role}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
 
         {/* Invite link — owners only */}
         {isOwner && (
-          <div>
+          <div className="mb-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Invite link
             </h2>
@@ -209,33 +284,26 @@ export default async function TripDetailPage({
         )}
 
         <Separator className="my-8" />
+
         {/* Flight summary */}
         <div className="mb-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Flight summary
           </h2>
-
-
-
-
-          <FlightSummary tripId={id} existingPlan={trip.flight_summary ?? null} />
-
+          {allReady ? (
+            <FlightSummary tripId={id} existingPlan={trip.flight_summary ?? null} ready={true} />
+          ) : (
+            <Card>
+              <CardContent className="px-5 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Will generate once all {groupSize} participants submit their preferences.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
       </div>
     </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="px-4 py-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        <p className="mt-1.5 text-base font-semibold">{value}</p>
-      </CardContent>
-    </Card>
   );
 }

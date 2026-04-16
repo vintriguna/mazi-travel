@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LogoutButton from "@/components/LogoutButton";
+import TripCard from "@/components/TripCard";
+
 
 type Trip = {
   id: string;
@@ -14,25 +16,25 @@ type Trip = {
   end_date: string | null;
 };
 
-function TripCard({ trip }: { trip: Trip }) {
-  return (
-    <Link href={`/trips/${trip.id}`}>
-      <Card className="transition-colors hover:bg-accent cursor-pointer">
-        <CardContent className="px-5 py-4">
-          <div className="font-semibold">{trip.name}</div>
-          {trip.destination && (
-            <div className="mt-1 text-sm text-muted-foreground">{trip.destination}</div>
-          )}
-          {(trip.start_date || trip.end_date) && (
-            <div className="mt-1 text-xs text-muted-foreground">
-              {trip.start_date}{trip.end_date ? ` → ${trip.end_date}` : ""}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
+// function TripCard({ trip }: { trip: Trip }) {
+//   return (
+//     <Link href={`/trips/${trip.id}`}>
+//       <Card className="transition-colors hover:bg-accent cursor-pointer">
+//         <CardContent className="px-5 py-4">
+//           <div className="font-semibold">{trip.name}</div>
+//           {trip.destination && (
+//             <div className="mt-1 text-sm text-muted-foreground">{trip.destination}</div>
+//           )}
+//           {(trip.start_date || trip.end_date) && (
+//             <div className="mt-1 text-xs text-muted-foreground">
+//               {trip.start_date}{trip.end_date ? ` → ${trip.end_date}` : ""}
+//             </div>
+//           )}
+//         </CardContent>
+//       </Card>
+//     </Link>
+//   );
+// }
 
 export default async function TripsPage() {
   const sessionClient = await createClient();
@@ -83,7 +85,7 @@ export default async function TripsPage() {
           {ownedTrips && ownedTrips.length > 0 ? (
             <div className="grid gap-3">
               {ownedTrips.map((trip) => (
-                <TripCard key={trip.id} trip={trip} />
+                <TripCard key={trip.id} trip={trip} isOwner />
               ))}
             </div>
           ) : (

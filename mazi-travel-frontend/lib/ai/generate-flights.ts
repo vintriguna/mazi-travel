@@ -1,15 +1,18 @@
+type ParticipantPref = {
+  trip_pace: string;
+  budget_range: string;
+  top_priorities: string[];
+  ai_notes: string | null;
+};
+
 type TripInput = {
-    origin: string | null;
+  origin: string | null;
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
   trip_type: string | null;
   group_size: number | null;
-  total_budget: number | null;
-  trip_pace: string | null;
-  top_priorities: string[] | null;
-  ai_notes: string | null;
-  flight_summary: string | null;
+  participant_preferences: ParticipantPref[];
 };
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
@@ -22,6 +25,13 @@ const PACE_LABELS: Record<string, string> = {
   relaxed: "Relaxed",
   balanced: "Balanced",
   packed: "Packed",
+};
+
+const BUDGET_LABELS: Record<string, string> = {
+  budget: "Budget-friendly",
+  moderate: "Moderate",
+  comfortable: "Comfortable",
+  luxury: "Luxury",
 };
 
 function buildPrompt(trip: TripInput): string {
@@ -38,22 +48,21 @@ function buildPrompt(trip: TripInput): string {
     lines.push(`Trip type: ${TRIP_TYPE_LABELS[trip.trip_type] ?? trip.trip_type}`);
   }
   if (trip.group_size) lines.push(`Group size: ${trip.group_size} people`);
-  if (trip.total_budget) lines.push(`Total budget: $${trip.total_budget.toLocaleString()}`);
-  if (trip.trip_pace) {
-    lines.push(`Pace: ${PACE_LABELS[trip.trip_pace] ?? trip.trip_pace}`);
+
+  if (trip.participant_preferences.length > 0) {
+    lines.push("\nParticipant preferences:");
+    trip.participant_preferences.forEach((p, i) => {
+      lines.push(`  Participant ${i + 1}:`);
+      lines.push(`    Pace: ${PACE_LABELS[p.trip_pace] ?? p.trip_pace}`);
+      lines.push(`    Budget: ${BUDGET_LABELS[p.budget_range] ?? p.budget_range}`);
+      lines.push(`    Priorities: ${p.top_priorities.join(", ")}`);
+      if (p.ai_notes) lines.push(`    Notes: ${p.ai_notes}`);
+    });
   }
-  if (trip.top_priorities?.length) {
-    lines.push(`Top priorities: ${trip.top_priorities.join(", ")}`);
-  }
-  if (trip.ai_notes) lines.push(`Additional notes: ${trip.ai_notes}`);
 
   return lines.join("\n");
 }
 
-/**
- * 🔍 Call SerpAPI Google Flights
- * Docs: https://serpapi.com/google-flights-api
- */
 async function searchFlights(params: {
   from: string;
   to: string;
@@ -64,29 +73,22 @@ async function searchFlights(params: {
   if (!apiKey) throw new Error("SERPAPI_KEY is not set");
 
   const url = new URL("https://serpapi.com/search.json");
-
   url.searchParams.set("engine", "google_flights");
   url.searchParams.set("departure_id", params.from);
   url.searchParams.set("arrival_id", params.to);
   url.searchParams.set("outbound_date", params.departure_date);
-
   if (params.return_date) {
     url.searchParams.set("return_date", params.return_date);
   }
-
   url.searchParams.set("currency", "USD");
   url.searchParams.set("hl", "en");
   url.searchParams.set("api_key", apiKey);
-
-  // Optional but HIGHLY recommended
   url.searchParams.set("deep_search", "true");
 
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error("Flight search failed");
 
   const data = await res.json();
-
-  // SerpAPI returns structured arrays like best_flights & other_flights :contentReference[oaicite:0]{index=0}
   return {
     best_flights: data.best_flights ?? [],
     other_flights: data.other_flights ?? [],
@@ -94,41 +96,20 @@ async function searchFlights(params: {
   };
 }
 
-/**
- * 🧠 Build AI prompt with flights
- */
-function buildFlightPlannerPrompt(
-  trip: TripInput,
-  flights: any
-): string {
-  return `
-You are an expert travel planning assistant.
-
-Your job:
-1. Analyze the trip details
-2. Review available flight options
-3. Recommend the best 2–3 flights
-4. Explain why (price, duration, convenience)
-
-Trip Details:
-${buildPrompt(trip)}
-
-Flight Data (JSON):
-${JSON.stringify(flights, null, 2)}
-
-Instructions:
-- Consider budget, group size, and priorities
-- Highlight tradeoffs (cheapest vs fastest vs best timing)
-- Be concise, friendly, and helpful
-`;
+function getAirportCode(destination: string | null): string {
+  if (!destination) return "LAX";
+  const map: Record<string, string> = {
+    paris: "CDG",
+    london: "LHR",
+    tokyo: "HND",
+    new_york: "JFK",
+    los_angeles: "LAX",
+    chicago: "ORD",
+  };
+  return map[destination.toLowerCase()] ?? "LAX";
 }
 
-/**
- * ✈️ MAIN FUNCTION (like your original)
- */
-export async function generateFlightPlan(
-  trip: TripInput
-): Promise<string> {
+export async function generateFlightPlan(trip: TripInput): Promise<string> {
   const apiKey = process.env.OPEN_ROUTER_API_KEY;
   if (!apiKey) throw new Error("OPEN_ROUTER_API_KEY is not set");
 
@@ -136,125 +117,14 @@ export async function generateFlightPlan(
     throw new Error("Trip must have a start_date");
   }
 
-  /**
-   * 🧠 Simple airport mapping (temporary)
-   * You can replace this later with SerpAPI autocomplete
-   */
-  function getAirportCode(location: string | null): string | null {
-    if (!location) return null;
-
-    const normalized = location
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, " ")
-        .replace(/,/g, "");
-
-    const map: Record<string, string> = {
-        // 🇺🇸 United States major hubs
-        chicago: "ORD",
-        "chicago il": "ORD",
-
-        new_york: "JFK",
-        "new york": "JFK",
-        "new york city": "JFK",
-        nyc: "JFK",
-
-        los_angeles: "LAX",
-        "los angeles": "LAX",
-        la: "LAX",
-
-        san_francisco: "SFO",
-        sf: "SFO",
-
-        miami: "MIA",
-        seattle: "SEA",
-        boston: "BOS",
-        washington: "IAD",
-        dc: "IAD",
-
-        // 🇪🇺 Europe
-        london: "LHR",
-        "london uk": "LHR",
-
-        paris: "CDG",
-        "paris france": "CDG",
-
-        rome: "FCO",
-        amsterdam: "AMS",
-        madrid: "MAD",
-        barcelona: "BCN",
-        berlin: "BER",
-        frankfurt: "FRA",
-
-        // 🇯🇵 Asia
-        tokyo: "HND",
-        "tokyo japan": "HND",
-
-        osaka: "KIX",
-        seoul: "ICN",
-        singapore: "SIN",
-        bangkok: "BKK",
-        hong_kong: "HKG",
-
-        // 🇦🇪 Middle East
-        dubai: "DXB",
-        doha: "DOH",
-        abu_dhabi: "AUH",
-
-        // 🇦🇺 Oceania
-        sydney: "SYD",
-        melbourne: "MEL",
-
-        // 🇮🇳 India
-        delhi: "DEL",
-        mumbai: "BOM",
-        bangalore: "BLR",
-
-        // 🇮🇩 Southeast Asia (important for your use case)
-        bali: "DPS",
-        "denpasar bali": "DPS",
-        jakarta: "CGK",
-
-        // 🇲🇽 / LATAM
-        mexico_city: "MEX",
-        "mexico city": "MEX",
-        cancun: "CUN",
-        bogota: "BOG",
-        lima: "LIM",
-    };
-
-    return map[normalized] ?? null;
-    }
-
-  /**
-   * ✈️ Build flight params internally
-   * SerpAPI requires:
-   * - departure_id
-   * - arrival_id
-   * - outbound_date :contentReference[oaicite:0]{index=0}
-   */
-
-    const from = getAirportCode(trip.origin);
-    const to = getAirportCode(trip.destination);
-
-    if (!from) {
-    throw new Error(`Invalid or unsupported origin: ${trip.origin}`);
-    }
-
-    if (!to) {
-    throw new Error(`Invalid or unsupported destination: ${trip.destination}`);
-    }
-
   const flightParams = {
-    from,
-    to,
+    from: getAirportCode(trip.origin),
+    to: getAirportCode(trip.destination),
     departure_date: trip.start_date,
     return_date: trip.end_date ?? undefined,
   };
 
-  
-
-  // 1. Fetch flights
+  // 1. Fetch real flight data
   const flights = await searchFlights(flightParams);
 
   // 2. Ask AI to analyze them
@@ -268,66 +138,61 @@ export async function generateFlightPlan(
       model: "gpt-4.1-mini",
       messages: [
         {
-            role: "system",
-            content: `
-            You are a flight recommendation engine.
+          role: "system",
+          content: `
+You are a flight recommendation engine.
 
-            You MUST output ONLY valid JSON.
-            No markdown.
-            No explanation.
-            No extra text.
+You MUST output ONLY valid JSON.
+No markdown. No explanation. No extra text.
 
-            Return data in this exact structure:
+Return data in this exact structure:
 
-            {
-            "title": string,
-            "summary": string,
-            "flights": [
-                {
-                "rank": number,
-                "airline": string,
-                "route": string,
-                "price_per_person": number,
-                "duration_minutes": number,
-                "departure_time": string,
-                "arrival_time": string,
-                "aircraft": string,
-                "stops": number,
-                "pros": string[],
-                "cons": string[],
-                "best_for": string
-                }
-            ],
-            "recommendation": {
-                "best_option_rank": number,
-                "reason": string
-            }
-            }
+{
+  "title": string,
+  "summary": string,
+  "flights": [
+    {
+      "rank": number,
+      "airline": string,
+      "route": string,
+      "price_per_person": number,
+      "duration_minutes": number,
+      "departure_time": string,
+      "arrival_time": string,
+      "aircraft": string,
+      "stops": number,
+      "pros": string[],
+      "cons": string[],
+      "best_for": string
+    }
+  ],
+  "recommendation": {
+    "best_option_rank": number,
+    "reason": string
+  }
+}
 
-            Rules:
-            - flights must be max 3 items
-            - durations must be in minutes (number only)
-            - price must be number only (no $ or commas)
-            - always include pros and cons as arrays
-            - keep language simple, consistent, and concise
-            - max 2 flights
-            - Keep all strings under 120 characters
-            - max 3 pros
-            - max 3 cons
-            `
-            },
+Rules:
+- max 2 flights
+- durations in minutes (number only)
+- price as number only (no $ or commas)
+- max 3 pros, max 3 cons
+- Keep all strings under 120 characters
+- Consider each participant's budget range and priorities when recommending
+`,
+        },
         {
-            role: "user",
-            content: `
-            Trip Details:
-            ${buildPrompt(trip)}
+          role: "user",
+          content: `
+Trip Details:
+${buildPrompt(trip)}
 
-            Flight Data:
-            ${JSON.stringify(flights, null, 2)}
+Flight Data:
+${JSON.stringify(flights, null, 2)}
 
-            Return the structured JSON exactly.
-            `
-            },
+Return the structured JSON exactly.
+`,
+        },
       ],
       temperature: 0.7,
       max_tokens: 500,
@@ -341,7 +206,6 @@ export async function generateFlightPlan(
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
-
   if (!content) throw new Error("No content in response");
 
   return content.trim();

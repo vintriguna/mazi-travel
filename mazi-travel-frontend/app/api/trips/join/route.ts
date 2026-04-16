@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   // Find the trip
   const { data: trip, error: tripError } = await supabase
     .from("trips")
-    .select("id, user_id")
+    .select("id, user_id, group_size")
     .eq("invite_code", code)
     .single();
 
@@ -38,6 +38,18 @@ export async function POST(req: Request) {
   if (existing) {
     // Already a member — just redirect them to the trip
     return NextResponse.json({ tripId: trip.id, alreadyJoined: true });
+  }
+
+  // Check capacity
+  if (trip.group_size) {
+    const { count } = await supabase
+      .from("trip_participants")
+      .select("*", { count: "exact", head: true })
+      .eq("trip_id", trip.id);
+
+    if ((count ?? 0) >= trip.group_size) {
+      return NextResponse.json({ error: "Trip is full" }, { status: 403 });
+    }
   }
 
   // Insert as member
