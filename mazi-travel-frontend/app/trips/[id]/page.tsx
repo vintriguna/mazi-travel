@@ -11,6 +11,7 @@ import TripSummary from "./TripSummary";
 import FlightSummary from "./FlightSummary";
 import GroupSummary from "./GroupSummary";
 import TripSuggestions from "./TripSuggestions";
+import CompletionProgress from "./CompletionProgress";
 import { aggregatePreferences } from "@/lib/preferences";
 import type { ParticipantPreference } from "@/lib/preferences";
 import UpdateGroupSize from "./UpdateGroupSize";
@@ -136,37 +137,49 @@ export default async function TripDetailPage({
                   {trip.destination ?? "—"}
                 </span>
               </div>
-              {dateValue && (
-                <p className="mt-1 text-sm text-muted-foreground">{dateValue}</p>
-              )}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0 pt-1">
               {isOwner && <Badge variant="secondary">Owner</Badge>}
-              {trip.trip_type && (
-                <Badge variant="outline">
-                  {TRIP_TYPE_LABELS[trip.trip_type] ?? trip.trip_type}
-                </Badge>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Stats grid */}
-        <div className="mb-6">
+        {/* Stats row */}
+        <div className="mb-6 grid grid-cols-3 gap-3">
           <Card>
-            <CardContent className="px-4 py-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Group size
-              </p>
-              <p className="mt-1.5 text-base font-semibold flex items-center">
-                {groupSize ? `${groupSize} people` : "—"}
+            <CardContent className="px-5 py-5">
+              <p className="text-xs uppercase tracking-widest font-semibold text-muted-foreground mb-1">Group</p>
+              <p className="text-2xl font-bold leading-none">{groupSize || "—"}</p>
+              <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                <span>people</span>
                 {isOwner && groupSize > 0 && (
                   <UpdateGroupSize tripId={id} currentSize={groupSize} />
                 )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="px-5 py-5">
+              <p className="text-xs uppercase tracking-widest font-semibold text-muted-foreground mb-1">Dates</p>
+              <p className="text-sm font-semibold leading-snug">{dateValue ?? "—"}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="px-5 py-5">
+              <p className="text-xs uppercase tracking-widest font-semibold text-muted-foreground mb-1">Type</p>
+              <p className="text-sm font-semibold leading-snug">
+                {trip.trip_type ? (TRIP_TYPE_LABELS[trip.trip_type] ?? trip.trip_type) : "—"}
               </p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Completion progress */}
+        <CompletionProgress
+          groupSize={groupSize}
+          participantsJoined={participantsJoined}
+          preferencesSubmitted={preferencesSubmitted}
+        />
 
         {/* Submit preferences CTA */}
         {currentUserIsParticipant && !currentUserSubmitted && (
@@ -190,15 +203,13 @@ export default async function TripDetailPage({
           <GroupSummary aggregated={aggregated} totalSubmitted={preferencesSubmitted} />
         )}
 
-        <Separator className="my-8" />
-
         {/* AI summary */}
         {allReady ? (
           <TripSummary tripId={id} existingSummary={trip.ai_summary ?? null} ready={true} />
         ) : (
           <Card className="mb-6">
             <CardContent className="px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              <p className="text-xs uppercase tracking-widest font-semibold text-muted-foreground mb-1">
                 AI Summary
               </p>
               <p className="text-sm text-muted-foreground">
@@ -208,11 +219,9 @@ export default async function TripDetailPage({
           </Card>
         )}
 
-        <Separator className="my-8" />
-
         {/* Trip suggestions */}
-        <div className="mb-8">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="mb-10">
+          <h2 className="mb-4 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
             Trip Suggestions
           </h2>
           {allReady ? (
@@ -232,16 +241,16 @@ export default async function TripDetailPage({
           )}
         </div>
 
-        <Separator className="my-8" />
+        <Separator className="my-10" />
 
         {/* Participants */}
-        <div className="mb-8">
+        <div className="mb-10">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-xs uppercase tracking-widest font-semibold text-muted-foreground">
               Participants
             </h2>
-            <span className="text-sm text-muted-foreground">
-              {preferencesSubmitted} of {groupSize} joined
+            <span className="text-xs text-muted-foreground">
+              {preferencesSubmitted} of {groupSize} submitted
             </span>
           </div>
           <div className="grid gap-2">
@@ -249,7 +258,7 @@ export default async function TripDetailPage({
               const submitted = preferences.some((pref) => pref.user_id === p.user_id);
               return (
                 <Card key={p.user_id}>
-                  <CardContent className="flex items-center justify-between px-4 py-3">
+                  <CardContent className="flex items-center justify-between px-5 py-4">
                     <span className="text-sm">
                       {p.email}
                       {p.user_id === currentUserId && (
@@ -258,9 +267,9 @@ export default async function TripDetailPage({
                     </span>
                     <div className="flex items-center gap-2">
                       {submitted ? (
-                        <span className="text-xs text-green-600">Joined</span>
+                        <span className="text-xs text-green-600">Submitted</span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Not yet joined</span>
+                        <span className="text-xs text-muted-foreground">Pending</span>
                       )}
                       <Badge variant={p.role === "owner" ? "default" : "secondary"}>
                         {p.role}
@@ -276,18 +285,18 @@ export default async function TripDetailPage({
         {/* Invite link — owners only */}
         {isOwner && (
           <div className="mb-8">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="mb-3 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
               Invite link
             </h2>
             <CopyInviteLink code={trip.invite_code} link={inviteLink} />
           </div>
         )}
 
-        <Separator className="my-8" />
+        <Separator className="my-10" />
 
         {/* Flight summary */}
         <div className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="mb-3 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
             Flight summary
           </h2>
           {allReady ? (

@@ -17,7 +17,7 @@ export default function GroupSummary({ aggregated, totalSubmitted }: Props) {
 
   return (
     <Card className="mb-6">
-      <CardContent className="px-5 py-4 space-y-4">
+      <CardContent className="px-5 py-5 space-y-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Group summary
         </p>
