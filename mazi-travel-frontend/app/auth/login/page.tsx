@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 
 type Mode = "signin" | "signup";
 
@@ -87,7 +86,7 @@ function LoginForm() {
             Sign up
           </Button>
         </div>
-        <CardTitle className="pt-4 text-xl">
+        <CardTitle className="pt-4 text-2xl">
           {mode === "signin" ? "Welcome back" : "Create an account"}
         </CardTitle>
       </CardHeader>
@@ -112,8 +111,6 @@ function LoginForm() {
             <AlertDescription>{message}</AlertDescription>
           </Alert>
         )}
-
-        <Separator />
 
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="grid gap-1.5">
@@ -155,7 +152,11 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/40 px-4">
+      <div className="text-center">
+        <p className="text-4xl font-bold tracking-tight text-primary">Mazi</p>
+        <p className="mt-1 text-sm text-muted-foreground">Plan trips together, without the chaos.</p>
+      </div>
       <Suspense fallback={
         <Card className="w-full max-w-md">
           <CardContent className="py-10 text-center text-muted-foreground">Loading…</CardContent>
