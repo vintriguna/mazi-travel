@@ -140,7 +140,6 @@ function JoinTripInner() {
             {status === "error" && (
               <p className="text-sm text-destructive">{errorMsg}</p>
             )}
-
             <Button onClick={handleJoin} disabled={status === "joining"} className="w-full">
               {status === "joining" ? "Joining…" : "Join trip"}
             </Button>
