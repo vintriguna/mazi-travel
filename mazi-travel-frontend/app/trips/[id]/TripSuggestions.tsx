@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getTripImage } from "@/lib/ai/generate-images";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,8 +51,56 @@ function SuggestionCard({ row, index }: { row: SuggestionRow; index: number }) {
   const s: Suggestion = typeof row.content === "string"
     ? JSON.parse(row.content)
     : row.content;
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+      let ignore = false;
+      async function fetchImage() {
+        if (row.title && row.id) {
+          try {
+            // Compose query: destination city + first activity
+            let query = row.title;
+            const s: Suggestion = typeof row.content === "string" ? JSON.parse(row.content) : row.content;
+            if (s.candidate_activities && s.candidate_activities.length > 0) {
+              query = `${row.title} ${s.candidate_activities[0].name}`;
+            }
+            const res = await fetch("/api/images", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query }),
+            });
+            const data = await res.json();
+            const url = data.imageUrl ?? null;
+            if (!ignore) setImageUrl(url);
+            // Save image URL to backend
+            if (url) {
+              await fetch(`/api/trip-suggestions`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image_url: url }),
+              });
+            }
+          } catch {
+            if (!ignore) setImageUrl(null);
+          }
+        }
+      }
+      fetchImage();
+      return () => { ignore = true; };
+    }, [row.title ?? "", row.id ?? ""]);
+
   return (
     <Card className="overflow-hidden">
+      {imageUrl && (
+        <div className="w-full bg-muted/40 flex items-center justify-center">
+          <img
+            src={imageUrl}
+            alt={row.title}
+            className="w-full object-cover"
+            style={{ display: 'block' }}
+          />
+        </div>
+      )}
       <CardContent className="px-5 py-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">

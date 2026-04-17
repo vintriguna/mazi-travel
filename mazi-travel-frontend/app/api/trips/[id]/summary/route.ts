@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@/lib/supabase/server";
 import { generateTripSummary } from "@/lib/ai/generate-summary";
+// import { generateFlightSummary } from "@/lib/ai/generate-flights";
 import { NextResponse } from "next/server";
 
 export async function POST(
@@ -65,6 +66,7 @@ export async function POST(
     await supabase
       .from("trips")
       .update({ ai_summary: summary })
+      // .update({ ai_summary: summary, flight_summary: flights })
       .eq("id", id);
 
     return NextResponse.json({ summary });

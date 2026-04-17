@@ -3,10 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import LogoutButton from "@/components/LogoutButton";
 import TripCard from "@/components/TripCard";
-
 
 type Trip = {
   id: string;
@@ -14,27 +12,9 @@ type Trip = {
   destination: string | null;
   start_date: string | null;
   end_date: string | null;
+  image_url?: string | null;
 };
 
-// function TripCard({ trip }: { trip: Trip }) {
-//   return (
-//     <Link href={`/trips/${trip.id}`}>
-//       <Card className="transition-colors hover:bg-accent cursor-pointer">
-//         <CardContent className="px-5 py-4">
-//           <div className="font-semibold">{trip.name}</div>
-//           {trip.destination && (
-//             <div className="mt-1 text-sm text-muted-foreground">{trip.destination}</div>
-//           )}
-//           {(trip.start_date || trip.end_date) && (
-//             <div className="mt-1 text-xs text-muted-foreground">
-//               {trip.start_date}{trip.end_date ? ` → ${trip.end_date}` : ""}
-//             </div>
-//           )}
-//         </CardContent>
-//       </Card>
-//     </Link>
-//   );
-// }
 
 export default async function TripsPage() {
   const sessionClient = await createClient();
@@ -46,14 +26,14 @@ export default async function TripsPage() {
   // Trips the user created
   const { data: ownedTrips } = await supabase
     .from("trips")
-    .select("id, name, destination, start_date, end_date")
+    .select("id, name, destination, start_date, end_date, image_url")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   // Trips the user joined (but didn't create)
   const { data: participantRows } = await supabase
     .from("trip_participants")
-    .select("trip_id, trips(id, name, destination, start_date, end_date)")
+    .select("trip_id, trips(id, name, destination, start_date, end_date, image_url)")
     .eq("user_id", userId)
     .eq("role", "member");
 
@@ -73,13 +53,12 @@ export default async function TripsPage() {
             <Button asChild size="sm">
               <Link href="/trips/new">+ New trip</Link>
             </Button>
-            <LogoutButton />
           </div>
         </div>
 
         {/* Trips you're hosting */}
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="mb-3 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
             Your trips
           </h2>
           {ownedTrips && ownedTrips.length > 0 ? (
@@ -90,9 +69,9 @@ export default async function TripsPage() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No trips yet.{" "}
+              No trips yet —{" "}
               <Link href="/trips/new" className="underline underline-offset-4">
-                Create one.
+                create your first one.
               </Link>
             </p>
           )}
@@ -101,7 +80,7 @@ export default async function TripsPage() {
         {/* Trips you've joined */}
         {joinedTrips.length > 0 && (
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="mb-3 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
               Joined trips
             </h2>
             <div className="grid gap-3">
@@ -111,6 +90,10 @@ export default async function TripsPage() {
             </div>
           </section>
         )}
+
+        <div className="mt-12 flex justify-center">
+          <LogoutButton />
+        </div>
       </div>
     </div>
   );
