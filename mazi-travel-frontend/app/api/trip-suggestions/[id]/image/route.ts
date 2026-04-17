@@ -2,8 +2,8 @@ import { supabase } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
 // PATCH /api/trip-suggestions/[id]/image
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { image_url } = await req.json();
   if (!image_url) {
     return NextResponse.json({ error: "Missing image_url" }, { status: 400 });
