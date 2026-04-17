@@ -64,37 +64,40 @@ function buildPrompt(trip: TripInput): string {
 }
 
 export async function generateTripSummary(trip: TripInput): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+  const apiKey = process.env.OPEN_ROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPEN_ROUTER_API_KEY is not set");
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
+      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "X-goog-api-key": apiKey,
     },
     body: JSON.stringify({
-      contents: [
+      model: "gpt-4.1-mini",
+      messages: [
         {
-          parts: [
-            {
-              text:
-                "You are a travel planning assistant. Given structured trip details and each participant's preferences, write a short (2–3 sentence) friendly group trip summary. Acknowledge the group's shared priorities and any tradeoffs. Be specific and enthusiastic. Do not use bullet points.\n" + buildPrompt(trip),
-            },
-          ],
+          role: "system",
+          content:
+            "You are a travel planning assistant. Given structured trip details and each participant's preferences, write a short (2–3 sentence) friendly group trip summary. Acknowledge the group's shared priorities and any tradeoffs. Be specific and enthusiastic. Do not use bullet points.",
+        },
+        {
+          role: "user",
+          content: buildPrompt(trip),
         },
       ],
+      max_tokens: 200,
     }),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${text}`);
+    throw new Error(`OpenRouter error ${response.status}: ${text}`);
   }
 
   const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!content) throw new Error("No content in Gemini response");
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("No content in OpenRouter response");
 
   return content.trim();
 }
