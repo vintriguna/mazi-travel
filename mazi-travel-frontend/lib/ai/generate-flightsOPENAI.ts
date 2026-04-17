@@ -110,8 +110,8 @@ function getAirportCode(destination: string | null): string {
 }
 
 export async function generateFlightPlan(trip: TripInput): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+  const apiKey = process.env.OPEN_ROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPEN_ROUTER_API_KEY is not set");
 
   if (!trip.start_date) {
     throw new Error("Trip must have a start_date");
@@ -127,35 +127,86 @@ export async function generateFlightPlan(trip: TripInput): Promise<string> {
   // 1. Fetch real flight data
   const flights = await searchFlights(flightParams);
 
-  // 2. Ask Gemini to analyze them
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", {
+  // 2. Ask AI to analyze them
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "X-goog-api-key": apiKey,
     },
     body: JSON.stringify({
-      contents: [
+      model: "gpt-4.1-mini",
+      messages: [
         {
-          parts: [
-            {
-              text:
-                `You are a flight recommendation engine.\n\nYou MUST output ONLY valid JSON.\nNo markdown. No explanation. No extra text.\n\nReturn data in this exact structure:\n\n{\n  "title": string,\n  "summary": string,\n  "flights": [\n    {\n      "rank": number,\n      "airline": string,\n      "route": string,\n      "price_per_person": number,\n      "duration_minutes": number,\n      "departure_time": string,\n      "arrival_time": string,\n      "aircraft": string,\n      "stops": number,\n      "pros": string[],\n      "cons": string[],\n      "best_for": string\n    }\n  ],\n  "recommendation": {\n    "best_option_rank": number,\n    "reason": string\n  }\n}\n\nRules:\n- max 2 flights\n- durations in minutes (number only)\n- price as number only (no $ or commas)\n- max 3 pros, max 3 cons\n- Keep all strings under 120 characters\n- Consider each participant's budget range and priorities when recommending\n\nTrip Details:\n${buildPrompt(trip)}\n\nFlight Data:\n${JSON.stringify(flights, null, 2)}\n\nReturn the structured JSON exactly.`,
-            },
-          ],
+          role: "system",
+          content: `
+You are a flight recommendation engine.
+
+You MUST output ONLY valid JSON.
+No markdown. No explanation. No extra text.
+
+Return data in this exact structure:
+
+{
+  "title": string,
+  "summary": string,
+  "flights": [
+    {
+      "rank": number,
+      "airline": string,
+      "route": string,
+      "price_per_person": number,
+      "duration_minutes": number,
+      "departure_time": string,
+      "arrival_time": string,
+      "aircraft": string,
+      "stops": number,
+      "pros": string[],
+      "cons": string[],
+      "best_for": string
+    }
+  ],
+  "recommendation": {
+    "best_option_rank": number,
+    "reason": string
+  }
+}
+
+Rules:
+- max 2 flights
+- durations in minutes (number only)
+- price as number only (no $ or commas)
+- max 3 pros, max 3 cons
+- Keep all strings under 120 characters
+- Consider each participant's budget range and priorities when recommending
+`,
+        },
+        {
+          role: "user",
+          content: `
+Trip Details:
+${buildPrompt(trip)}
+
+Flight Data:
+${JSON.stringify(flights, null, 2)}
+
+Return the structured JSON exactly.
+`,
         },
       ],
+      temperature: 0.7,
+      max_tokens: 1500,
     }),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${text}`);
+    throw new Error(`OpenAI error ${response.status}: ${text}`);
   }
 
   const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!content) throw new Error("No content in Gemini response");
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("No content in response");
 
   return content.trim();
 }
