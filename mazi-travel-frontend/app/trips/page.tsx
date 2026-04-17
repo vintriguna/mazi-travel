@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import LogoutButton from "@/components/LogoutButton";
 import TripCard from "@/components/TripCard";
 
@@ -15,33 +14,6 @@ type Trip = {
   end_date: string | null;
 };
 
-function TripCard({ trip }: { trip: Trip }) {
-  return (
-    <Link href={`/trips/${trip.id}`}>
-      <Card className="transition-colors hover:bg-accent cursor-pointer">
-        <CardContent className="px-5 py-5">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="font-semibold">{trip.name}</div>
-              {trip.destination && (
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {trip.destination}
-                </div>
-              )}
-              {(trip.start_date || trip.end_date) && (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {trip.start_date}
-                  {trip.end_date ? ` → ${trip.end_date}` : ""}
-                </div>
-              )}
-            </div>
-            <span className="text-muted-foreground shrink-0">→</span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
 
 export default async function TripsPage() {
   const sessionClient = await createClient();
