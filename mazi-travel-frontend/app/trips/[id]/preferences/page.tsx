@@ -2,11 +2,22 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PACE_OPTIONS, BUDGET_OPTIONS, PRIORITY_OPTIONS } from "@/lib/preferences";
+import { ArrowLeft, Zap, Coffee, BarChart2, DollarSign, Gem, Sparkles } from "lucide-react";
+import Link from "next/link";
+
+const PACE_ICONS = [
+  <Coffee key="relaxed" className="h-5 w-5" />,
+  <BarChart2 key="balanced" className="h-5 w-5" />,
+  <Zap key="packed" className="h-5 w-5" />,
+];
+
+const BUDGET_ICONS = [
+  <DollarSign key="budget" className="h-5 w-5" />,
+  <DollarSign key="mid" className="h-5 w-5" />,
+  <Gem key="luxury" className="h-5 w-5" />,
+];
 
 export default function PreferencesPage() {
   const params = useParams();
@@ -33,7 +44,7 @@ export default function PreferencesPage() {
           }
         }
       } catch {
-        // ignore — let the user try to submit
+        // ignore
       }
       setChecking(false);
     }
@@ -76,120 +87,196 @@ export default function PreferencesPage() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40">
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm" style={{ color: "#434654" }}>Loading…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl">Your preferences</CardTitle>
-          <p className="text-sm text-muted-foreground">
+    <div className="px-4 py-10">
+      <div className="mx-auto max-w-xl">
+        <Link
+          href={`/trips/${tripId}`}
+          className="mb-8 inline-flex items-center gap-1.5 text-sm transition-colors"
+          style={{ color: "#434654" }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to trip
+        </Link>
+
+        {/* Header */}
+        <div className="mb-8">
+          <h1
+            className="text-display mb-2"
+            style={{ color: "#191C1E" }}
+          >
+            Your Preferences
+          </h1>
+          <p
+            className="text-base"
+            style={{
+              color: "#434654",
+              fontFamily: "var(--font-inter, system-ui)",
+            }}
+          >
             Tell us what matters to you. This helps personalize the group plan.
           </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="grid gap-6">
+        </div>
 
-            {/* Trip pace */}
-            <div className="grid gap-1.5">
-              <Label>Trip pace</Label>
-              <div className="flex rounded-lg border bg-muted p-1 gap-1">
-                {PACE_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.value}
+        <form onSubmit={handleSubmit} className="grid gap-6">
+          {/* Trip pace */}
+          <div
+            className="rounded-[1.5rem] p-6"
+            style={{ background: "#ffffff", boxShadow: "0px 12px 32px rgba(25,28,30,0.06)" }}
+          >
+            <p
+              className="text-xs font-semibold uppercase tracking-widest mb-4"
+              style={{ color: "#434654" }}
+            >
+              Trip Pace
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {PACE_OPTIONS.map((opt, i) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTripPace(opt.value)}
+                  className="flex flex-col items-center gap-2 rounded-xl py-4 px-3 text-center transition-all"
+                  style={
+                    tripPace === opt.value
+                      ? {
+                          background: "linear-gradient(135deg, #003D9B 0%, #0052CC 100%)",
+                          color: "#ffffff",
+                          boxShadow: "0px 8px 20px rgba(0,61,155,0.2)",
+                        }
+                      : { background: "#F2F4F7", color: "#434654" }
+                  }
+                >
+                  {PACE_ICONS[i]}
+                  <span className="text-xs font-semibold">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Budget */}
+          <div
+            className="rounded-[1.5rem] p-6"
+            style={{ background: "#ffffff", boxShadow: "0px 12px 32px rgba(25,28,30,0.06)" }}
+          >
+            <p
+              className="text-xs font-semibold uppercase tracking-widest mb-4"
+              style={{ color: "#434654" }}
+            >
+              Budget Range
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {BUDGET_OPTIONS.map((opt, i) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setBudgetRange(opt.value)}
+                  className="flex flex-col items-center gap-2 rounded-xl py-4 px-3 text-center transition-all"
+                  style={
+                    budgetRange === opt.value
+                      ? {
+                          background: "linear-gradient(135deg, #003D9B 0%, #0052CC 100%)",
+                          color: "#ffffff",
+                          boxShadow: "0px 8px 20px rgba(0,61,155,0.2)",
+                        }
+                      : { background: "#F2F4F7", color: "#434654" }
+                  }
+                >
+                  {BUDGET_ICONS[i]}
+                  <span className="text-xs font-semibold">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Top priorities */}
+          <div
+            className="rounded-[1.5rem] p-6"
+            style={{ background: "#ffffff", boxShadow: "0px 12px 32px rgba(25,28,30,0.06)" }}
+          >
+            <p
+              className="text-xs font-semibold uppercase tracking-widest mb-1"
+              style={{ color: "#434654" }}
+            >
+              Top Priorities
+            </p>
+            <p className="text-xs mb-4" style={{ color: "#C3C6D6" }}>
+              Pick 1–3
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {PRIORITY_OPTIONS.map((option) => {
+                const selected = priorities.includes(option);
+                return (
+                  <button
+                    key={option}
                     type="button"
-                    variant={tripPace === opt.value ? "default" : "ghost"}
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setTripPace(opt.value)}
+                    onClick={() => togglePriority(option)}
+                    disabled={!selected && priorities.length >= 3}
+                    className="rounded-full px-4 py-1.5 text-sm font-semibold transition-all disabled:opacity-40"
+                    style={
+                      selected
+                        ? { background: "#006661", color: "#5DE7DE" }
+                        : { background: "#F2F4F7", color: "#434654" }
+                    }
                   >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
+                    {option}
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            {/* Budget range */}
-            <div className="grid gap-1.5">
-              <Label>Budget range</Label>
-              <div className="flex rounded-lg border bg-muted p-1 gap-1">
-                {BUDGET_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.value}
-                    type="button"
-                    variant={budgetRange === opt.value ? "default" : "ghost"}
-                    size="sm"
-                    className="flex-1 text-xs"
-                    onClick={() => setBudgetRange(opt.value)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Top priorities */}
-            <div className="grid gap-2">
-              <Label>
-                Top priorities
-                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                  (pick 1–3)
-                </span>
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {PRIORITY_OPTIONS.map((option) => {
-                  const selected = priorities.includes(option);
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => togglePriority(option)}
-                      disabled={!selected && priorities.length >= 3}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-sm transition-colors",
-                        selected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted/50 hover:bg-muted border-border",
-                        !selected && priorities.length >= 3 && "opacity-40 cursor-not-allowed"
-                      )}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* AI notes */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="aiNotes">
+          {/* AI notes */}
+          <div
+            className="rounded-[1.5rem] p-6"
+            style={{ background: "#ffffff", boxShadow: "0px 12px 32px rgba(25,28,30,0.06)" }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-4 w-4 text-[#904D00]" />
+              <p
+                className="text-xs font-semibold uppercase tracking-widest"
+                style={{ color: "#434654" }}
+              >
                 Notes for AI
-                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                <span className="ml-1.5 text-xs font-normal" style={{ color: "#C3C6D6" }}>
                   (optional)
                 </span>
-              </Label>
-              <textarea
-                id="aiNotes"
-                rows={3}
-                placeholder="Dietary restrictions, accessibility needs, must-see spots…"
-                value={aiNotes}
-                onChange={(e) => setAiNotes(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-              />
+              </p>
             </div>
+            <textarea
+              rows={3}
+              placeholder="Dietary restrictions, accessibility needs, must-see spots…"
+              value={aiNotes}
+              onChange={(e) => setAiNotes(e.target.value)}
+              className="w-full rounded-xl px-4 py-3 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003D9B] placeholder:text-[#C3C6D6]"
+              style={{
+                background: "#F2F4F7",
+                color: "#191C1E",
+                border: "none",
+                fontFamily: "var(--font-inter, system-ui)",
+              }}
+            />
+          </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="text-sm text-red-500">{error}</p>
+          )}
 
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Saving…" : "Submit preferences"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-gradient w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-60"
+          >
+            {loading ? "Saving…" : "Submit Preferences"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

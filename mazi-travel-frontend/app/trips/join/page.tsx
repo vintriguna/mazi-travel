@@ -2,10 +2,10 @@
 
 import { FormEvent, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ArrowLeft, Hash, MapPin } from "lucide-react";
+import Link from "next/link";
 
 type TripPreview = {
   id: string;
@@ -25,7 +25,6 @@ function JoinTripInner() {
   const [status, setStatus] = useState<Status>(urlCode ? "loading" : "enter_code");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Auto-look up when code comes from the URL
   useEffect(() => {
     if (!urlCode) return;
     lookUpCode(urlCode);
@@ -67,106 +66,175 @@ function JoinTripInner() {
     }
   }
 
+  const cardStyle = {
+    background: "#ffffff",
+    borderRadius: "1.5rem",
+    boxShadow: "0px 12px 32px rgba(25,28,30,0.06)",
+    padding: "2rem",
+  };
+
   return (
-    <Card className="w-full max-w-md">
-      {/* Code entry form — shown when no URL code */}
+    <div className="w-full max-w-md">
+      {/* Code entry */}
       {status === "enter_code" && (
-        <>
-          <CardHeader>
-            <CardTitle>Join a trip</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCodeSubmit} className="grid gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="code">Invite code</Label>
+        <div style={cardStyle}>
+          <h2
+            className="text-2xl font-bold mb-2"
+            style={{ fontFamily: "var(--font-jakarta, system-ui)", color: "#191C1E", letterSpacing: "-0.02em" }}
+          >
+            Join a Trip
+          </h2>
+          <p className="text-sm mb-6" style={{ color: "#434654" }}>
+            Enter the invite code your trip organizer shared with you.
+          </p>
+          <form onSubmit={handleCodeSubmit} className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label className="text-sm font-medium" style={{ color: "#434654" }}>
+                Invite code
+              </Label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#C3C6D6]" />
                 <Input
-                  id="code"
                   placeholder="e.g. a1b2c3d4"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   autoComplete="off"
                   autoFocus
+                  className="rounded-xl border-0 pl-10 focus-visible:ring-2 focus-visible:ring-[#003D9B] focus-visible:ring-offset-0"
+                  style={{ background: "#F2F4F7" }}
                 />
               </div>
-              <Button type="submit" disabled={!code.trim()} className="w-full">
-                Look up trip
-              </Button>
-            </form>
-          </CardContent>
-        </>
+            </div>
+            <button
+              type="submit"
+              disabled={!code.trim()}
+              className="btn-gradient w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50"
+            >
+              Look up trip
+            </button>
+          </form>
+        </div>
       )}
 
       {/* Loading */}
       {status === "loading" && (
-        <CardContent className="py-10 text-center text-muted-foreground">
-          Looking up invite…
-        </CardContent>
+        <div style={cardStyle} className="flex items-center justify-center py-16">
+          <p className="text-sm" style={{ color: "#434654" }}>Looking up invite…</p>
+        </div>
       )}
 
-      {/* Not found — with option to try again */}
+      {/* Not found */}
       {status === "not_found" && (
-        <>
-          <CardHeader>
-            <CardTitle>Code not found</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <p className="text-sm text-muted-foreground">
-              That invite code is invalid. Double-check the code and try again.
-            </p>
-            <Button variant="outline" onClick={() => { setCode(""); setStatus("enter_code"); }}>
+        <div style={cardStyle}>
+          <h2
+            className="text-2xl font-bold mb-2"
+            style={{ fontFamily: "var(--font-jakarta, system-ui)", color: "#191C1E", letterSpacing: "-0.02em" }}
+          >
+            Code not found
+          </h2>
+          <p className="text-sm mb-6" style={{ color: "#434654" }}>
+            That invite code is invalid. Double-check and try again.
+          </p>
+          <div className="grid gap-3">
+            <button
+              onClick={() => { setCode(""); setStatus("enter_code"); }}
+              className="w-full rounded-xl py-2.5 text-sm font-semibold transition-colors"
+              style={{ background: "#F2F4F7", color: "#191C1E" }}
+            >
               Try a different code
-            </Button>
-            <Button variant="ghost" onClick={() => router.push("/trips")}>
+            </button>
+            <button
+              onClick={() => router.push("/trips")}
+              className="w-full rounded-xl py-2.5 text-sm font-medium transition-colors"
+              style={{ color: "#434654" }}
+            >
               Back to my trips
-            </Button>
-          </CardContent>
-        </>
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Confirmation */}
       {(status === "ready" || status === "joining" || status === "error") && trip && (
-        <>
-          <CardHeader>
-            <CardTitle>You&apos;re invited</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            <div className="rounded-xl border bg-muted/50 px-4 py-4">
-              <p className="font-semibold">{trip.name}</p>
+        <div style={cardStyle}>
+          <h2
+            className="text-2xl font-bold mb-6"
+            style={{ fontFamily: "var(--font-jakarta, system-ui)", color: "#191C1E", letterSpacing: "-0.02em" }}
+          >
+            You&apos;re invited!
+          </h2>
+
+          {/* Trip preview */}
+          <div
+            className="rounded-xl p-4 mb-6 flex items-start gap-3"
+            style={{ background: "#F2F4F7" }}
+          >
+            <MapPin className="h-5 w-5 text-[#003D9B] mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold" style={{ color: "#191C1E" }}>{trip.name}</p>
               {trip.destination && (
-                <p className="mt-0.5 text-sm text-muted-foreground">{trip.destination}</p>
+                <p className="text-sm mt-0.5" style={{ color: "#434654" }}>{trip.destination}</p>
               )}
             </div>
+          </div>
 
-            {status === "error" && (
-              <p className="text-sm text-destructive">{errorMsg}</p>
-            )}
-            <Button onClick={handleJoin} disabled={status === "joining"} className="w-full">
+          {status === "error" && (
+            <p className="text-sm text-red-500 mb-4">{errorMsg}</p>
+          )}
+
+          <div className="grid gap-3">
+            <button
+              onClick={handleJoin}
+              disabled={status === "joining"}
+              className="btn-gradient w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-60"
+            >
               {status === "joining" ? "Joining…" : "Join trip"}
-            </Button>
-            <Button variant="ghost" onClick={() => { setCode(""); setTrip(null); setStatus("enter_code"); }}>
+            </button>
+            <button
+              onClick={() => { setCode(""); setTrip(null); setStatus("enter_code"); }}
+              className="w-full rounded-xl py-2.5 text-sm font-medium transition-colors"
+              style={{ color: "#434654" }}
+            >
               Use a different code
-            </Button>
-          </CardContent>
-        </>
+            </button>
+          </div>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
 export default function JoinTripPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <Suspense
-        fallback={
-          <Card className="w-full max-w-md">
-            <CardContent className="py-10 text-center text-muted-foreground">
-              Loading…
-            </CardContent>
-          </Card>
-        }
-      >
-        <JoinTripInner />
-      </Suspense>
+    <div className="px-4 py-10">
+      <div className="mx-auto max-w-xl">
+        <Link
+          href="/trips"
+          className="mb-8 inline-flex items-center gap-1.5 text-sm transition-colors"
+          style={{ color: "#434654" }}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          All trips
+        </Link>
+        <div className="flex justify-center">
+          <Suspense
+            fallback={
+              <div
+                className="w-full max-w-md flex items-center justify-center py-16"
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "1.5rem",
+                  boxShadow: "0px 12px 32px rgba(25,28,30,0.06)",
+                }}
+              >
+                <p className="text-sm" style={{ color: "#434654" }}>Loading…</p>
+              </div>
+            }
+          >
+            <JoinTripInner />
+          </Suspense>
+        </div>
+      </div>
     </div>
   );
 }

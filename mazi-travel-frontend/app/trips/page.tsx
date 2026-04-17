@@ -2,9 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import LogoutButton from "@/components/LogoutButton";
 import TripCard from "@/components/TripCard";
+import { MapPin } from "lucide-react";
 
 type Trip = {
   id: string;
@@ -15,7 +14,6 @@ type Trip = {
   image_url?: string | null;
 };
 
-
 export default async function TripsPage() {
   const sessionClient = await createClient();
   const { data: claimsData } = await sessionClient.auth.getClaims();
@@ -23,14 +21,12 @@ export default async function TripsPage() {
 
   if (!userId) redirect("/auth/login");
 
-  // Trips the user created
   const { data: ownedTrips } = await supabase
     .from("trips")
     .select("id, name, destination, start_date, end_date, image_url")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  // Trips the user joined (but didn't create)
   const { data: participantRows } = await supabase
     .from("trip_participants")
     .select("trip_id, trips(id, name, destination, start_date, end_date, image_url)")
@@ -41,59 +37,91 @@ export default async function TripsPage() {
     .map((row) => row.trips as unknown as Trip)
     .filter(Boolean);
 
+  const hasAnyTrips = (ownedTrips?.length ?? 0) > 0 || joinedTrips.length > 0;
+
   return (
-    <div className="min-h-screen bg-muted/40 px-4 py-10">
-      <div className="mx-auto max-w-lg">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-semibold">Trips</h1>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link href="/trips/join">Join a trip</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/trips/new">+ New trip</Link>
-            </Button>
-          </div>
+    <div className="px-4 py-12">
+      <div className="mx-auto max-w-5xl">
+        {/* Page header */}
+        <div className="mb-10">
+          <h1
+            className="text-display mb-2"
+            style={{ color: "#191C1E" }}
+          >
+            My Trips
+          </h1>
+          <p
+            className="text-base"
+            style={{
+              color: "#434654",
+              fontFamily: "var(--font-inter, system-ui)",
+            }}
+          >
+            Your adventures, organized.
+          </p>
         </div>
 
-        {/* Trips you're hosting */}
-        <section className="mb-8">
-          <h2 className="mb-3 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
-            Your trips
-          </h2>
-          {ownedTrips && ownedTrips.length > 0 ? (
-            <div className="grid gap-3">
+        {/* Empty state */}
+        {!hasAnyTrips && (
+          <div
+            className="flex flex-col items-center justify-center py-24 rounded-[1.5rem]"
+            style={{ background: "#ffffff", boxShadow: "0px 12px 32px rgba(25,28,30,0.06)" }}
+          >
+            <MapPin className="h-12 w-12 text-[#C3C6D6] mb-4" />
+            <p
+              className="text-lg font-semibold mb-1"
+              style={{ color: "#191C1E", fontFamily: "var(--font-jakarta, system-ui)" }}
+            >
+              No trips yet
+            </p>
+            <p className="text-sm text-[#434654] mb-6">
+              Create your first trip and invite your crew.
+            </p>
+            <Link
+              href="/trips/new"
+              className="btn-gradient rounded-xl px-6 py-2.5 text-sm font-semibold"
+            >
+              Plan your first trip
+            </Link>
+          </div>
+        )}
+
+        {/* Your trips */}
+        {ownedTrips && ownedTrips.length > 0 && (
+          <section className="mb-12">
+            <h2
+              className="mb-5 text-xs font-semibold uppercase tracking-widest"
+              style={{ color: "#434654" }}
+            >
+              Your trips
+            </h2>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {ownedTrips.map((trip) => (
                 <TripCard key={trip.id} trip={trip} isOwner />
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No trips yet —{" "}
-              <Link href="/trips/new" className="underline underline-offset-4">
-                create your first one.
-              </Link>
-            </p>
-          )}
-        </section>
+          </section>
+        )}
 
-        {/* Trips you've joined */}
+        {/* Joined trips */}
         {joinedTrips.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
+          <section
+            className="rounded-[1.5rem] px-6 pt-6 pb-8"
+            style={{ background: "#F2F4F7" }}
+          >
+            <h2
+              className="mb-5 text-xs font-semibold uppercase tracking-widest"
+              style={{ color: "#434654" }}
+            >
               Joined trips
             </h2>
-            <div className="grid gap-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {joinedTrips.map((trip) => (
                 <TripCard key={trip.id} trip={trip} />
               ))}
             </div>
           </section>
         )}
-
-        <div className="mt-12 flex justify-center">
-          <LogoutButton />
-        </div>
       </div>
     </div>
   );
